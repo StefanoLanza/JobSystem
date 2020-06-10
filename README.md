@@ -1,24 +1,29 @@
 **Typhoon JobSystem** is a C++ library for scheduling and executing jobs, either on a single thread or concurrently on multiple threads. It is intended for use in applications with tight performance and memory consumption constraints, like games.
 
+The implementation is based on the job system described in the [Molecular Matters blog](https://blog.molecular-matters.com/2015/08/24/job-system-2-0-lock-free-work-stealing-part-1-basics/).
+
 # Features
 - Minimal, free-function API written in C++ 14
 - Fixed memory usage
-- Zero runtime allocations *1
+- Zero heap allocations at runtime
 - Job stealing
 - Support for lambdas 
 - Support for parallel loops
 - Support for continuations
 
-*1 read section about lambdas
-
 # INSTALLATION
+* Clone the repository to a local folder
+* For testing
+  * Run ```premake5.exe vs2019``` to generate a Visual Studio 2019 solution
+  * Select a build configuration (Release, Debug, Win32, x64)
+  * Build and run the UnitTest project
+* For integration in your own project
+  * Add the contents of the src folder to your project build pipeline.
 
 # CONFIGURATION
-
 Look at the file src/config.h Here you can find configuration settings for the library. You can change these settings by either editing this file or by defining them with the preprocessor in your build configuration.
 
 # USAGE
-
 First, it is convenient to use the ```Typhoon``` namespace.
 ```
 using namespace Typhoon;
@@ -85,9 +90,10 @@ destroyJobSystem();
 ```
 # TODO
 - [ ] Fix lockfree queues
-- [ ] Test with gcc and clang
-- [ ] Better strategies for splitting work in parallel loops
-- [ ] Integration and testing in a complex game
+- [ ] Port to other platforms (Android, iOS)
+- [ ] Investigate better strategies for splitting work in parallel loops
+- [ ] Investigate other strategies for stealing jobs
+- [ ] Integrate and test in a complex game
 
 # CONTRIBUTE
-I would appreciate the help of other programmers to complete the tasks in the todo list.
+I would appreciate the help of other programmers to complete the tasks in the todo list and to test the library more extensively.
