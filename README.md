@@ -2,14 +2,17 @@
 
 The implementation is based on the job system described in the [Molecular Matters blog](https://blog.molecular-matters.com/2015/08/24/job-system-2-0-lock-free-work-stealing-part-1-basics/).
 
-# Features
-- Minimal, free-function API written in C++ 14
-- Fixed memory usage
+# FEATURES
+- Minimal, free-function API written in C++ 17
+- Fixed, user-configured memory usage
 - Zero heap allocations at runtime
 - Job stealing
 - Support for lambdas 
 - Support for parallel loops
 - Support for continuations
+
+# REQUIREMENTS
+* A C++ 17 conformant compiler
 
 # INSTALLATION
 * Clone the repository to a local folder
@@ -24,6 +27,8 @@ The implementation is based on the job system described in the [Molecular Matter
 Look at the file src/config.h Here you can find configuration settings for the library. You can change these settings by either editing this file or by defining them with the preprocessor in your build configuration.
 
 # USAGE
+Please look inside the examples folder for various examples.
+
 First, it is convenient to use the ```Typhoon``` namespace.
 ```
 using namespace Typhoon;
@@ -93,7 +98,7 @@ destroyJobSystem();
 - [ ] Port to other platforms (Android, iOS)
 - [ ] Investigate better strategies for splitting work in parallel loops
 - [ ] Investigate other strategies for stealing jobs
-- [ ] Integrate and test in a complex game
+- [ ] Write documentation
 
 # CONTRIBUTE
 I would appreciate the help of other programmers to complete the tasks in the todo list and to test the library more extensively.
