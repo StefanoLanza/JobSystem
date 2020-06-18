@@ -1,0 +1,64 @@
+﻿---
+BasedOnStyle: Microsoft
+AccessModifierOffset : -4
+AlignConsecutiveMacros: 'true'
+AlignConsecutiveAssignments: 'false'
+AlignConsecutiveDeclarations: true
+AlignEscapedNewlines: Left
+AlignOperands: 'true'
+AlignTrailingComments: 'true'
+AlignAfterOpenBracket: Align
+AllowAllArgumentsOnNextLine: 'true'
+AllowAllConstructorInitializersOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: 'true'
+AllowShortBlocksOnASingleLine: 'false'
+AllowShortFunctionsOnASingleLine: 'false'
+AllowShortCaseLabelsOnASingleLine: 'false'
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: 'false'
+AllowAllParametersOfDeclarationOnNextLine: false
+AlwaysBreakBeforeMultilineStrings: 'false'
+AlwaysBreakTemplateDeclarations: 'Yes'
+BinPackParameters: true
+BinPackArguments: true
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterUnion: false
+  AfterStruct: false
+  AfterClass: false
+  AfterCaseLabel: false
+  AfterEnum: false
+  AfterNamespace:  false
+  AfterFunction:   false
+  AfterControlStatement: false
+  SplitEmptyRecord: true
+  SplitEmptyFunction: true
+IndentCaseLabels: false
+NamespaceIndentation: None
+SortIncludes: 'true'
+SortUsingDeclarations: 'false'
+SpaceAfterLogicalNot: 'true'
+SpaceAfterTemplateKeyword: 'true'
+SpaceBeforeAssignmentOperators: 'true'
+SpaceBeforeCpp11BracedList: 'true'
+SpaceBeforeCtorInitializerColon: 'true'
+SpaceBeforeInheritanceColon: 'true'
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: 'true'
+SpaceInEmptyParentheses: 'false'
+SpacesInAngles: 'false'
+SpacesInCStyleCastParentheses: 'false'
+UseTab: ForIndentation
+Standard : 'c++17'
+DerivePointerAlignment : 'false'
+PointerAlignment : 'Left'
+Cpp11BracedListStyle : 'false'
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerAllOnOneLineOrOnePerLine : false
+MaxEmptyLinesToKeep : 1
+ColumnLimit: 150
+SpaceAfterCStyleCast: 'false'
+SpaceBeforeAssignmentOperators: 'true'
+KeepEmptyLinesAtTheStartOfBlocks: true
+...

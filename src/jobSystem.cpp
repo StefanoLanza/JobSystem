@@ -196,8 +196,8 @@ void executeJob(JobId jobId, JobSystem& js) {
 	if (job.isLambda) {
 		void* const      ptr = detail::alignPointer(job.data, alignof(JobLambda));
 		JobLambda* const lambda = static_cast<JobLambda*>(ptr);
-		(*lambda)();          // call
-		lambda->~JobLambda(); // destruct
+		(*lambda)(tl_threadIndex); // call
+		lambda->~JobLambda();      // destruct
 		job.isLambda = false;
 	}
 	else {
@@ -276,7 +276,7 @@ std::unique_ptr<JobSystem> jobSystem;
 } // namespace
 
 void initJobSystem(size_t numJobsPerThread, size_t numWorkerThreads) {
-	const JobSystemAllocator allocator { mallocWrap, freeWrap };
+	const JobSystemAllocator allocator { mallocWrap, freeWrap }; // default allocator
 	initJobSystem(numJobsPerThread, numWorkerThreads, allocator);
 }
 
@@ -284,6 +284,10 @@ void initJobSystem(size_t numJobsPerThread, size_t numWorkerThreads, const JobSy
 	assert(numJobsPerThread > 0);
 	assert(allocator.alloc);
 	assert(allocator.free);
+
+	if (numWorkerThreads == defaultNumWorkerThreads) {
+		numWorkerThreads = std::thread::hardware_concurrency() - 1; // main thread excluded
+	}
 
 	constexpr size_t maxJobs = std::numeric_limits<JobId>::max() - 1; // jobId 0 is reserved
 
@@ -537,10 +541,10 @@ void parallel_for_job(const JobParams& prm) {
 	}
 	else {
 		// execute the function on the range of data
-		(data->function)(data->offset, data->count, data->functionArgs);
+		(data->function)(data->offset, data->count, data->functionArgs, prm.threadIndex);
 	}
 }
 
-}
+} // namespace detail
 
 } // namespace Typhoon

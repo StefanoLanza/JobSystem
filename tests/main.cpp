@@ -1,8 +1,9 @@
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#include <cstdarg>
+#include <include/jobSystem.h>
 #include <iostream>
-#include <src/jobSystem.h>
 #include <mutex>
 #include <thread>
 
@@ -57,7 +58,7 @@ struct Particle {
 	float vx, vy;
 };
 
-void updateParticles(size_t offset, size_t count, const void* args) {
+void updateParticles(size_t offset, size_t count, const void* args, size_t threadIndex) {
 	auto [particles, dt] = unpackJobArgs<Particle*, float>(args);
 	particles += offset;
 #if LOG_LEVEL > 1
@@ -89,13 +90,13 @@ struct Model {
 	float x, y, z;
 };
 
-void cullModels(size_t offset, size_t count, const void* args) {
+void cullModels(size_t offset, size_t count, const void* args, size_t threadIndex) {
 #if LOG_LEVEL > 1
 	tsPrint("Cull models. offset: %zd count: %zd", offset, count);
 #endif
 }
 
-void drawModels(size_t offset, size_t count, const void* args) {
+void drawModels(size_t offset, size_t count, const void* args, size_t threadIndex) {
 #if LOG_LEVEL > 1
 	tsPrint("Draw models. offset: %zd count: %zd", offset, count);
 #endif
@@ -128,15 +129,16 @@ void jobAnimation(const JobParams& prm) {
 	tsPrint("Animation");
 	const int numAnimationJobs = unpackJobArg<int>(prm.args);
 	for (int i = 0; i < numAnimationJobs; ++i) {
-		startFunction(prm.job, [i] { animateSkeleton(i); });
+		startFunction(prm.job, [i](size_t threadIndex) { animateSkeleton(i); });
 	}
 }
 
-void jobSync(const JobParams& prm) {
+void jobSyncSimAndRendering(const JobParams& prm) {
 	tsPrint("Sync simulation & rendering");
 }
 
-void vSync() {
+void present(size_t threadIndex) {
+	(void)threadIndex;
 	tsPrint("VSync");
 }
 
@@ -156,7 +158,7 @@ void jobDraw(const JobParams& prm) {
 	startJob(drawLoop);
 }
 
-void jobSubmitRendering(const JobParams& prm) {
+void jobSubmitCommandBuffers(const JobParams& prm) {
 	tsPrint("Submit rendering");
 }
 
@@ -166,12 +168,12 @@ void jobRender(const JobParams& prm) {
 	const int   numModels = unpackJobArg<int>(prm.args);
 	const JobId cullJob = createChildJob(prm.job, jobCull, numModels);
 	const JobId drawJob = addContinuation(cullJob, jobDraw, numModels);
-	const JobId submitJob = addContinuation(drawJob, jobSubmitRendering);
+	const JobId submitJob = addContinuation(drawJob, jobSubmitCommandBuffers);
 	(void)submitJob;
 	startJob(cullJob);
 }
 
-void launchMissile(float /*velocity*/) {
+void launchMissile(int index, float /*velocity*/) {
 	std::this_thread::sleep_for(std::chrono::microseconds(10));
 	std::atomic_fetch_add<size_t>(&completeCount, 1);
 }
@@ -180,7 +182,7 @@ JobId addTestJobs(Test& test) {
 	const JobId rootJob = createJob();
 	const JobId animationJob = createChildJob(rootJob);
 	for (int i = 0; i < test.numSkeletons; ++i) {
-		startFunction(animationJob, [i] { animateSkeleton(i); });
+		startFunction(animationJob, [i](size_t threadIndex) { animateSkeleton(i); });
 	}
 	startJob(animationJob);
 	return rootJob;
@@ -197,7 +199,7 @@ JobId addParallelParticleJobs(JobId parentJob, Particle* particles, size_t parti
 		v += 0.05f;
 	}
 	constexpr float dt = 1.f;
-	const JobId job = parallelFor(parentJob, particleCount, 2048, updateParticles, particles, dt);
+	const JobId     job = parallelFor(parentJob, particleCount, 2048, updateParticles, particles, dt);
 	startJob(job);
 	return job;
 }
@@ -207,7 +209,7 @@ JobId simulateGameFrame(Test& test) {
 	root
 	    simulate
 	        physics, particles
-			animation
+	        animation
 	    sync
 	    render
 	        cull[0], cull[1]...cull[n]
@@ -221,9 +223,9 @@ JobId simulateGameFrame(Test& test) {
 	const JobId physicsJob = createChildJob(simulateJob, jobPhysics, test.numRigidBodies);
 	const JobId animationJob = addContinuation(physicsJob, jobAnimation, test.numSkeletons);
 	const JobId particleJob = addParallelParticleJobs(simulateJob, particles, std::size(particles));
-	const JobId syncJob = addContinuation(simulateJob, jobSync, test.numModels);
+	const JobId syncJob = addContinuation(simulateJob, jobSyncSimAndRendering);
 	const JobId renderJob = addContinuation(syncJob, jobRender, test.numModels);
-	const JobId vsyncJob = addContinuation(renderJob, vSync);
+	const JobId vsyncJob = addContinuation(renderJob, present);
 	(void)animationJob;
 	(void)particleJob;
 	(void)vsyncJob;
@@ -263,15 +265,15 @@ TEST_CASE("Jobs") {
 
 	std::atomic_store<size_t>(&completeCount, 0);
 
-	auto startTime = std::chrono::high_resolution_clock::now();
+	auto startTime = std::chrono::steady_clock::now();
 
 	const JobId rootJob = addTestJobs(test);
 	startAndWaitForJob(rootJob);
 	CHECK(std::atomic_load(&completeCount) == test.numSkeletons);
 
-	auto endTime = std::chrono::high_resolution_clock::now();
-	auto elapsedNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
-	print("Elapsed time: %.4f", (double)elapsedNanos / 1e6);
+	auto endTime = std::chrono::steady_clock::now();
+	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
 	print("");
 
 	destroyJobSystem();
@@ -295,20 +297,20 @@ TEST_CASE("Lambdas") {
 
 	std::atomic_store<size_t>(&completeCount, 0);
 
-	auto startTime = std::chrono::high_resolution_clock::now();
+	auto startTime = std::chrono::steady_clock::now();
 
 	const JobId rootJob = createJob();
 	const float velocity = 10.f;
 	for (int i = 0; i < test.numLambdas; ++i) {
-		startFunction(rootJob, [velocity]() { launchMissile(velocity); });
+		startFunction(rootJob, [i, velocity](size_t threadIndex) { launchMissile(i, velocity); });
 	}
 
 	startAndWaitForJob(rootJob);
 	CHECK(std::atomic_load(&completeCount) == test.numLambdas);
 
-	auto endTime = std::chrono::high_resolution_clock::now();
-	auto elapsedNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
-	print("Elapsed time: %.4f", (double)elapsedNanos / 1e6);
+	auto endTime = std::chrono::steady_clock::now();
+	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
 	print("");
 
 	destroyJobSystem();
@@ -330,15 +332,15 @@ TEST_CASE("Parallel") {
 
 	initJobSystem(test.maxJobs, numWorkerThreads);
 
-	auto startTime = std::chrono::high_resolution_clock::now();
+	auto startTime = std::chrono::steady_clock::now();
 
 	alignas(16) static Particle particles[8192];
 	const JobId                 rootJob = addParallelParticleJobs(nullJobId, particles, std::size(particles));
 	waitForJob(rootJob);
 
-	auto endTime = std::chrono::high_resolution_clock::now();
-	auto elapsedNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
-	print("Elapsed time: %.4f", (double)elapsedNanos / 1e6);
+	auto endTime = std::chrono::steady_clock::now();
+	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
 	print("");
 
 	checkParticles(particles, std::size(particles));
@@ -361,7 +363,7 @@ TEST_CASE("Game Frame") {
 
 	std::atomic_store<size_t>(&completeCount, 0);
 
-	auto startTime = std::chrono::high_resolution_clock::now();
+	auto startTime = std::chrono::steady_clock::now();
 
 	print("Game frame");
 	print("Worker threads: %zd", numWorkerThreads);
@@ -373,9 +375,9 @@ TEST_CASE("Game Frame") {
 		// CHECK(std::atomic_load(&completeCount) == test.numAnimationJobs);
 	}
 
-	auto endTime = std::chrono::high_resolution_clock::now();
-	auto elapsedNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
-	print("Elapsed time: %.4f", (double)elapsedNanos / 1e6);
+	auto endTime = std::chrono::steady_clock::now();
+	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
 	print("");
 
 	destroyJobSystem();

@@ -22,14 +22,17 @@ struct JobParams {
 };
 
 using JobFunction = void (*)(const JobParams&);
-using JobLambda = std::function<void()>;
-using ParallelForFunction = void (*)(size_t, size_t, const void* functionArgs);
+using JobLambda = std::function<void(size_t threadIndex)>;
+using ParallelForFunction = void (*)(size_t, size_t, const void* functionArgs, size_t threadIndex);
 
 // Custom allocator
 struct JobSystemAllocator {
 	std::function<void*(size_t)> alloc;
 	std::function<void(void*)>   free;
 };
+
+// Pass this to initJobSystem to let the library initialize the number of worker threads
+constexpr size_t defaultNumWorkerThreads = (size_t)-1;
 
 // Initialize the job system with a custom allocator
 void initJobSystem(size_t numJobsPerThread, size_t numWorkerThreads, const JobSystemAllocator& allocator);

@@ -13,15 +13,8 @@ workspace ("Typhoon-JobSystem")
 	defines { "_HAS_EXCEPTIONS=0" }
 	cppdialect "c++17"
 	rtti "Off"
-	buildoptions
-	{	
-		"/permissive-",
-		-- "structure was padded due to __declspec(align())"
-		'/wd4324',
-		'/wd4458', --declaration of xxx hides class member 
-	}
+	buildoptions {	"/permissive-",	}
 	system "Windows"
-	--targetdir (path.join(workspacePath, "%{cfg.shortname}")) -- target directory for output libraries
 
 filter "platforms:x86"
 	architecture "x86"
@@ -34,7 +27,6 @@ filter "platforms:x86_64"
 filter "configurations:Debug*"
 	defines { "_DEBUG", "DEBUG", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1", "_ENABLE_EXTENDED_ALIGNED_STORAGE", }
 	flags   { "NoManifest", }
-	callingconvention("VectorCall")
 	optimize("Off")
 	inlining "Default"
 	warnings "Extra"
@@ -42,32 +34,48 @@ filter "configurations:Debug*"
 	runtime "Debug"
 
 filter "configurations:Release*"
-	defines { "NDEBUG", "_ITERATOR_DEBUG_LEVEL=0", "_SECURE_SCL=0", "FINAL", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1", "_ENABLE_EXTENDED_ALIGNED_STORAGE", }
+	defines { "NDEBUG", "_ITERATOR_DEBUG_LEVEL=0", "_SECURE_SCL=0", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1", "_ENABLE_EXTENDED_ALIGNED_STORAGE", }
 	flags   { "NoManifest", "LinkTimeOptimization", "NoBufferSecurityCheck", "NoRuntimeChecks", }
-	callingconvention("VectorCall")
 	optimize("Full")
 	warnings "Extra"
 	inlining "Auto"
 	symbols "Off"
 	runtime "Release"
 	omitframepointer "On"
-	buildoptions
-	{	
-		"/Ot", -- favor fast code
-		"/Oi", -- enable intrinsic functions
-		'/fp:except-', -- disable floating point exceptions
-		'/Ob2', -- inline any suitable
-	}
-
 
 project("JobSystem")
 	kind "StaticLib"
 	files "src/**.cpp"
 	files "src/**.h"
-	includedirs { "src", }
+	files "include/**.*"
+	includedirs { "src", "include", }
 
 project("UnitTest")
 	kind "ConsoleApp"
 	links("JobSystem")
 	files "tests/**.cpp"
 	includedirs { "./", }
+
+project("Example1")
+	kind "ConsoleApp"
+	files "examples/example1.cpp"
+	includedirs { "./", }
+	links("JobSystem")
+
+project("Example2")
+	kind "ConsoleApp"
+	files "examples/example2.cpp"
+	includedirs { "./", }
+	links("JobSystem")
+
+project("Example3")
+	kind "ConsoleApp"
+	files "examples/example3.cpp"
+	includedirs { "./", }
+	links("JobSystem")
+
+project("Example4")
+	kind "ConsoleApp"
+	files "examples/example4.cpp"
+	includedirs { "./", }
+	links("JobSystem")
