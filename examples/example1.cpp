@@ -1,10 +1,11 @@
 // This example shows how to spawn child jobs that update N rigid bodies in parallel
 
+#include <include/jobSystem.h>
+
 #include <atomic>
 #include <cassert>
 #include <chrono>
 #include <cstdarg>
-#include <include/jobSystem.h>
 #include <iostream>
 #include <mutex>
 #include <thread>

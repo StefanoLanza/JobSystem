@@ -54,7 +54,7 @@ project("UnitTest")
 	kind "ConsoleApp"
 	links("JobSystem")
 	files "tests/**.cpp"
-	includedirs { "./", }
+	includedirs { "./", "external", }
 
 project("Example1")
 	kind "ConsoleApp"

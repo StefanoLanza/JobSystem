@@ -19,9 +19,9 @@ The implementation is based on the job system described in the [Molecular Matter
 * For testing
   * Run ```premake5.exe vs2019``` to generate a Visual Studio 2019 solution
   * Select a build configuration (Release, Debug, Win32, x64)
-  * Build and run the UnitTest project
+  * Build and run the UnitTest project or one of the Example projects
 * For integration in your own project
-  * Add the contents of the src folder to your project build pipeline.
+  * Add the contents of the include and src folder to your project build pipeline.
 
 # CONFIGURATION
 Look at the file src/config.h Here you can find configuration settings for the library. You can change these settings by either editing this file or by defining them with the preprocessor in your build configuration.

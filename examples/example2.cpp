@@ -1,15 +1,14 @@
 // This example shows how to execute concurrently jobs coded as C++ lambdas
 
+#include <include/jobSystem.h>
+
 #include <atomic>
 #include <cassert>
 #include <chrono>
-#include <include/jobSystem.h>
+#include <cstdarg>
 #include <iostream>
 #include <mutex>
 #include <thread>
-
-#define CATCH_CONFIG_RUNNER
-#include <Catch-master/single_include/catch2/catch.hpp>
 
 using namespace Typhoon;
 
