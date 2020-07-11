@@ -418,10 +418,10 @@ void startAndWaitForJob(JobId jobId) {
 	waitForJob(jobId);
 }
 
-void startFunction(JobId parent, JobLambda&& lambda) {
+void startFunction(JobId parentJobId, JobLambda&& lambda) {
 	assert(jobSystem);
 
-	const JobId jobId = detail::createChildJobImpl(parent, nullFunction, nullptr, 0);
+	const JobId jobId = detail::createChildJobImpl(parentJobId, nullFunction, nullptr, 0);
 	Job&        job = getJob(jobSystem->jobPool, jobId);
 	static_assert(sizeof job.data >= sizeof(JobLambda) + alignof(JobLambda) - 1);
 	// in-place move construct lambda into Job::data
@@ -435,13 +435,13 @@ JobId addContinuation(JobId job, JobFunction function) {
 	return detail::addContinuationImpl(job, function, nullptr, 0);
 }
 
-JobId addContinuation(JobId job, JobLambda&& function) {
+JobId addContinuation(JobId job, JobLambda&& lambda) {
 	const JobId continuationId = detail::addContinuationImpl(job, nullFunction, nullptr, 0);
 	Job&        continuation = getJob(jobSystem->jobPool, continuationId);
 	static_assert(sizeof continuation.data >= sizeof(JobLambda) + alignof(JobLambda) - 1);
 	// in-place move construct lambda into Job::data
 	void* const ptr = detail::alignPointer(continuation.data, alignof(JobLambda));
-	new (ptr) JobLambda { std::move(function) };
+	new (ptr) JobLambda { std::move(lambda) };
 	continuation.isLambda = true;
 	return continuationId;
 }

@@ -1,0 +1,55 @@
+/*!
+
+@mainpage
+
+
+@section TOC Table Of Contents
+	- @ref TOC_Intro
+	- @ref TOC_Requirements
+	- @ref TOC_Contents
+	- @ref TOC_Installation
+	- @ref TOC_Compilation
+	- @ref TOC_Usage
+	- @ref TOC_Credits
+
+@subsection TOC_Intro Introduction
+Typhoon JobSystem is a library for scheduling and executing jobs, either on a single thread or concurrently on multiple threads. It is intended for use in games or other realtime applications with tight performance and memory consumption constraints. It is written in C++ 17.
+
+@subsection TOC_Requirements Requirements
+- C++ 17 compiler support
+
+@subsection TOC_Contents Repository Contents
+
+- root <br>
+Misc files related to git, premake and code formatting.
+
+- include <br>
+Public header files.
+  
+- src <br>
+Private header files and library source code.
+   
+- doc <br>
+Documentation.
+
+- examples <br>
+Various examples.
+
+- external <br> 
+External dependencies (Catch for unit testing)
+
+- tests <br>
+Unit test
+
+@subsection TOC_Installation Installation
+
+@subsection TOC_Compilation Compilation
+In order to use the reflection library in your project, follow these steps:
+
+@subsection TOC_Usage Usage
+
+@subsection TOC_Credits Credits
+Programmer: Stefano Lanza <steflanz@gmail.com> <br>
+
+*/
+

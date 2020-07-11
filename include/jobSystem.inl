@@ -29,16 +29,16 @@ JobId createJob(JobFunction function, ArgType... args) {
 }
 
 template <typename... ArgType>
-JobId createChildJob(JobId parent, JobFunction function, ArgType... args) {
+JobId createChildJob(JobId parentJobId, JobFunction function, ArgType... args) {
 	static_assert((std::is_pod_v<ArgType> && ... && true));
 
 	auto argTuple = std::make_tuple(args...);
-	return detail::createChildJobImpl(parent, function, &argTuple, sizeof argTuple);
+	return detail::createChildJobImpl(parentJobId, function, &argTuple, sizeof argTuple);
 }
 
 template <typename... ArgType>
-void startChildJob(JobId parent, JobFunction function, ArgType... args) {
-	JobId job = createChildJob(parent, function, args...);
+void startChildJob(JobId parentJobId, JobFunction function, ArgType... args) {
+	JobId job = createChildJob(parentJobId, function, args...);
 	startJob(job);
 }
 
