@@ -187,7 +187,7 @@ void startChildJob(JobId parentJobId, JobFunction function, ArgType... args);
  * @return 
 */
 template <typename... ArgType>
-JobId parallelFor(JobId parentJobId, size_t elementCount, size_t splitThreshold, ParallelForFunction function, const ArgType&... args);
+JobId parallelFor(JobId parentJobId, size_t splitThreshold, ParallelForFunction function, size_t elementCount, const ArgType&... args);
 
 /**
  * @brief Utility to unpack arguments

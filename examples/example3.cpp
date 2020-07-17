@@ -57,41 +57,63 @@ void resetParticles(Particle* particles, size_t particleCount) {
 	}
 }
 
-void updateParticles(size_t offset, size_t count, const void* args, size_t threadIndex) {
-	auto [particles, dt] = unpackJobArgs<Particle*, float>(args);
-	particles += offset;
-	tsPrint("[thread %zd] Update particles. offset: %zd count: %zd; dt: %.2f", threadIndex, offset, count, dt);
+void updateParticles(Particle* particles, size_t count, float dt) {
 	for (size_t i = 0; i < count; ++i) {
 		particles[i].x += particles[i].vx * dt;
 		particles[i].y += particles[i].vy * dt;
 	}
-	std::this_thread::sleep_for(std::chrono::microseconds(20)); // simulate more work
+	//std::this_thread::sleep_for(std::chrono::microseconds(20)); // simulate more work
 }
 
-} // namespace
+void updateParticlesImpl(size_t offset, size_t count, const void* args, size_t threadIndex) {
+	auto [particles, dt] = unpackJobArgs<Particle*, float>(args);
+#if _DEBUG
+	tsPrint("[thread %zd] Update particles. offset: %zd count: %zd; dt: %.2f", threadIndex, offset, count, dt);
+#else
+	(void)threadIndex;
+#endif
+	updateParticles(particles + offset, count, dt);
+}
 
-int __cdecl main(int /*argc*/, char* /*argv*/[]) {
+void run_st(Particle* particles, size_t numParticles, float dt) {
+	print("Singlethreaded");
+
+	resetParticles(particles, numParticles);
+	const auto startTime = std::chrono::steady_clock::now();
+	updateParticles(particles, numParticles, dt);
+	const auto endTime = std::chrono::steady_clock::now();
+	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
+}
+
+void run_mt(Particle* particles, size_t numParticles, float dt) {
+	print("Multithreaded");
+
 	const size_t numWorkerThreads = std::thread::hardware_concurrency() - 1;
 	initJobSystem(defaultMaxJobs, numWorkerThreads);
-
 	print("Worker threads: %zd", numWorkerThreads);
 
-	constexpr float             dt = 1.f / 60.f; // seconds
-	constexpr size_t            numParticles = 16384;
-	alignas(16) static Particle particles[numParticles];
 	resetParticles(particles, numParticles);
-
 	const auto startTime = std::chrono::steady_clock::now();
-
 	const JobId rootJob = createJob();
-	const JobId particleJob = parallelFor(rootJob, numParticles, 1024 /*split threshold*/, updateParticles, particles, dt);
+	const JobId particleJob = parallelFor(rootJob, 16384, updateParticlesImpl, numParticles, particles, dt);
 	startJob(particleJob);
 	startAndWaitForJob(rootJob);
-
 	const auto endTime = std::chrono::steady_clock::now();
 	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
 
 	destroyJobSystem();
+}
+
+} // namespace
+
+int __cdecl main(int /*argc*/, char* /*argv*/[]) {
+	constexpr float             dt = 1.f / 60.f; // seconds
+	constexpr size_t            numParticles = 65536;
+	alignas(16) static Particle particles[numParticles];
+
+	run_st(particles, numParticles, dt);
+	run_mt(particles, numParticles, dt);
 	return 0;
 }

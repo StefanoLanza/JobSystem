@@ -102,14 +102,14 @@ void jobSyncSimAndRendering(const JobParams& /*prm*/) {
 void jobCull(const JobParams& prm) {
 	tsPrint("Cull models");
 	auto [models, numModels] = unpackJobArgs<Model*, int>(prm.args);
-	const JobId cullLoop = parallelFor(prm.job, numModels, defaultParallelForSplitThreshold, cullModels, models);
+	const JobId cullLoop = parallelFor(prm.job, defaultParallelForSplitThreshold, cullModels, numModels, models);
 	startJob(cullLoop);
 }
 
 void jobDraw(const JobParams& prm) {
 	tsPrint("Draw models");
 	auto [models, numModels] = unpackJobArgs<Model*, int>(prm.args);
-	const JobId drawLoop = parallelFor(prm.job, numModels, defaultParallelForSplitThreshold, drawModels, models);
+	const JobId drawLoop = parallelFor(prm.job, defaultParallelForSplitThreshold, drawModels, numModels, models);
 	startJob(drawLoop);
 }
 

@@ -523,20 +523,20 @@ JobId addContinuationImpl(JobId previousJobId, JobFunction function, const void*
 	return continuationId;
 }
 
-void parallel_for_job(const JobParams& prm) {
+void parallelForImpl(const JobParams& prm) {
 	const ParallelForJobData* data = static_cast<const ParallelForJobData*>(prm.args);
 	if (data->count > data->splitThreshold) {
 		// split in two
 		const uint32_t     leftCount = data->count / 2u;
 		ParallelForJobData leftData { data->function, data->splitThreshold, data->offset, leftCount };
 		std::memcpy(leftData.functionArgs, data->functionArgs, sizeof leftData.functionArgs);
-		JobId left = createChildJob(prm.job, parallel_for_job, leftData);
+		JobId left = createChildJob(prm.job, parallelForImpl, leftData);
 		startJob(left);
 
 		const uint32_t     rightCount = data->count - leftCount;
 		ParallelForJobData rightData { data->function, data->splitThreshold, data->offset + leftCount, rightCount };
 		std::memcpy(rightData.functionArgs, data->functionArgs, sizeof rightData.functionArgs);
-		JobId right = createChildJob(prm.job, parallel_for_job, rightData);
+		JobId right = createChildJob(prm.job, parallelForImpl, rightData);
 		startJob(right);
 	}
 	else {

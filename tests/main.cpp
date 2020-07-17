@@ -146,7 +146,7 @@ void jobCull(const JobParams& prm) {
 	tsPrint("Cull");
 	const int    numModels = unpackJobArg<int>(prm.args);
 	static Model models[1024];
-	const JobId  cullLoop = parallelFor(prm.job, numModels, defaultParallelForSplitThreshold, cullModels, models);
+	const JobId  cullLoop = parallelFor(prm.job, defaultParallelForSplitThreshold, cullModels, numModels, models);
 	startJob(cullLoop);
 }
 
@@ -154,7 +154,7 @@ void jobDraw(const JobParams& prm) {
 	tsPrint("Draw");
 	const int    numModels = unpackJobArg<int>(prm.args);
 	static Model models[1024];
-	const JobId  drawLoop = parallelFor(prm.job, numModels, defaultParallelForSplitThreshold, drawModels, models);
+	const JobId  drawLoop = parallelFor(prm.job, defaultParallelForSplitThreshold, drawModels, numModels, models);
 	startJob(drawLoop);
 }
 
@@ -199,7 +199,7 @@ JobId addParallelParticleJobs(JobId parentJob, Particle* particles, size_t parti
 		v += 0.05f;
 	}
 	constexpr float dt = 1.f;
-	const JobId     job = parallelFor(parentJob, particleCount, 2048, updateParticles, particles, dt);
+	const JobId     job = parallelFor(parentJob, 2048, updateParticles, particleCount, particles, dt);
 	startJob(job);
 	return job;
 }

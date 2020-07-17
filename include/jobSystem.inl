@@ -16,7 +16,7 @@ struct ParallelForJobData {
 	char                functionArgs[24];
 };
 
-void parallel_for_job(const JobParams& prm);
+void parallelForImpl(const JobParams& prm);
 
 } // namespace detail
 
@@ -51,7 +51,7 @@ JobId addContinuation(JobId job, JobFunction function, ArgType... args) {
 }
 
 template <typename... ArgType>
-JobId parallelFor(JobId parent, size_t elementCount, size_t splitThreshold, ParallelForFunction function, const ArgType&... args) {
+JobId parallelFor(JobId parent, size_t splitThreshold, ParallelForFunction function, size_t elementCount, const ArgType&... args) {
 	static_assert((std::is_pod_v<ArgType> && ... && true));
 
 	auto                       argTuple = std::make_tuple(args...);
@@ -59,7 +59,7 @@ JobId parallelFor(JobId parent, size_t elementCount, size_t splitThreshold, Para
 	// Store extra arguments in the job data
 	static_assert(sizeof argTuple <= sizeof jobData.functionArgs);
 	std::memcpy(jobData.functionArgs, &argTuple, sizeof argTuple);
-	return detail::createChildJobImpl(parent, detail::parallel_for_job, &jobData, sizeof jobData);
+	return detail::createChildJobImpl(parent, detail::parallelForImpl, &jobData, sizeof jobData);
 }
 
 template <typename ArgType>

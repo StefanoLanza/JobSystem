@@ -79,3 +79,9 @@ project("Example4")
 	files "examples/example4.cpp"
 	includedirs { "./", }
 	links("JobSystem")
+
+project("Example5")
+	kind "ConsoleApp"
+	files "examples/example5.cpp"
+	includedirs { "./", }
+	links("JobSystem")
