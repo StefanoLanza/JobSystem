@@ -263,11 +263,11 @@ bool isJobFinished(JobSystem& js, JobId jobId) {
 void nullFunction(const JobParams& /*prm*/) {
 }
 
-void* _cdecl mallocWrap(size_t size) {
+void* CDECL mallocWrap(size_t size) {
 	return malloc(size);
 }
 
-void _cdecl freeWrap(void* ptr) {
+void CDECL freeWrap(void* ptr) {
 	free(ptr);
 }
 

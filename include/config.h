@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stddef.h> // size_t
+
 namespace Typhoon {
 
 // Job system configuration
@@ -32,3 +34,9 @@ constexpr size_t defaultParallelForSplitThreshold = 256; // TODO elements or byt
 #endif
 
 } // namespace Typhoon
+
+#ifdef MSVC
+#define CDECL _cdecl
+#else
+#define CDECL
+#endif

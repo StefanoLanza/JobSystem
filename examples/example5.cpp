@@ -9,6 +9,7 @@
 #include <iostream>
 #include <mutex>
 #include <thread>
+#include <new>
 
 using namespace Typhoon;
 
@@ -21,8 +22,10 @@ void print(const char* msgFormat, ...) {
 	va_start(msgArgs, msgFormat);
 
 	char msgBuffer[256];
+#ifdef MSVC
 	vsnprintf_s(msgBuffer, std::size(msgBuffer), std::size(msgBuffer) - 1, msgFormat, msgArgs);
-	std::cout << msgBuffer << std::endl;
+#endif
+    std::cout << msgBuffer << std::endl;
 	std::cout.flush();
 
 	va_end(msgArgs);
@@ -33,8 +36,8 @@ void tsPrint(const char* msgFormat, ...) {
 	va_start(msgArgs, msgFormat);
 
 	char msgBuffer[256];
-	vsnprintf_s(msgBuffer, std::size(msgBuffer), std::size(msgBuffer) - 1, msgFormat, msgArgs);
-	std::lock_guard<std::mutex> lock { coutMutex };
+    vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
+    std::lock_guard<std::mutex> lock { coutMutex };
 	std::cout << msgBuffer << std::endl;
 	std::cout.flush();
 
@@ -121,8 +124,7 @@ void run_mt(Image& image) {
 	initJobSystem(defaultMaxJobs, numWorkerThreads);
 
 	const auto startTime = std::chrono::steady_clock::now();
-	constexpr size_t cacheLineSize = std::hardware_constructive_interference_size;
-
+    
 	const JobId rootJob = createJob();
 	const JobId imageJob = parallelFor(rootJob, 8192*4, processImage, (size_t)image.width * (size_t)image.height, &image);
 	startJob(imageJob);

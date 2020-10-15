@@ -21,7 +21,7 @@ void print(const char* msgFormat, ...) {
 	va_start(msgArgs, msgFormat);
 
 	char msgBuffer[256];
-	vsnprintf_s(msgBuffer, std::size(msgBuffer), std::size(msgBuffer) - 1, msgFormat, msgArgs);
+	vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
 	std::cout << msgBuffer << std::endl;
 	std::cout.flush();
 
@@ -33,7 +33,7 @@ void tsPrint(const char* msgFormat, ...) {
 	va_start(msgArgs, msgFormat);
 
 	char msgBuffer[256];
-	vsnprintf_s(msgBuffer, std::size(msgBuffer), std::size(msgBuffer) - 1, msgFormat, msgArgs);
+	vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
 	std::lock_guard<std::mutex> lock { coutMutex };
 	std::cout << msgBuffer << std::endl;
 	std::cout.flush();
