@@ -33,7 +33,7 @@ void print(const char* msgFormat, ...) {
 	va_start(msgArgs, msgFormat);
 
 	char msgBuffer[256];
-	vsnprintf_s(msgBuffer, std::size(msgBuffer), std::size(msgBuffer) - 1, msgFormat, msgArgs);
+	vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
 	std::cout << msgBuffer << std::endl;
 	std::cout.flush();
 
@@ -45,7 +45,7 @@ void tsPrint(const char* msgFormat, ...) {
 	va_start(msgArgs, msgFormat);
 
 	char msgBuffer[256];
-	vsnprintf_s(msgBuffer, std::size(msgBuffer), std::size(msgBuffer) - 1, msgFormat, msgArgs);
+	vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
 	std::lock_guard<std::mutex> lock { coutMutex };
 	std::cout << "[Thread " << std::this_thread::get_id() << "] " << msgBuffer << std::endl;
 	std::cout.flush();
@@ -58,7 +58,7 @@ struct Particle {
 	float vx, vy;
 };
 
-void updateParticles(size_t offset, size_t count, const void* args, size_t threadIndex) {
+void updateParticles(size_t offset, size_t count, const void* args, [[maybe_unused]] size_t threadIndex) {
 	auto [particles, dt] = unpackJobArgs<Particle*, float>(args);
 	particles += offset;
 #if LOG_LEVEL > 1
@@ -79,7 +79,7 @@ void checkParticles(const Particle* particles, size_t particleCount) {
 	}
 }
 
-void animateSkeleton(int index) {
+void animateSkeleton([[maybe_unused]] int index) {
 #if LOG_LEVEL > 1
 	tsPrint("Animate skeleton: %d", index);
 #endif
@@ -90,13 +90,13 @@ struct Model {
 	float x, y, z;
 };
 
-void cullModels(size_t offset, size_t count, const void* args, size_t threadIndex) {
+void cullModels([[maybe_unused]] size_t offset, [[maybe_unused]] size_t count, [[maybe_unused]] const void* args, [[maybe_unused]] size_t threadIndex) {
 #if LOG_LEVEL > 1
 	tsPrint("Cull models. offset: %zd count: %zd", offset, count);
 #endif
 }
 
-void drawModels(size_t offset, size_t count, const void* args, size_t threadIndex) {
+void drawModels([[maybe_unused]] size_t offset, [[maybe_unused]] size_t count, [[maybe_unused]] const void* args, [[maybe_unused]] size_t threadIndex) {
 #if LOG_LEVEL > 1
 	tsPrint("Draw models. offset: %zd count: %zd", offset, count);
 #endif
@@ -112,7 +112,7 @@ void updateRigidBody(const JobParams& prm) {
 	std::atomic_fetch_add<size_t>(&completeCount, 1);
 }
 
-void jobSimulate(const JobParams& prm) {
+void jobSimulate([[maybe_unused]] const JobParams& prm) {
 	tsPrint("Simulate");
 }
 
@@ -129,11 +129,11 @@ void jobAnimation(const JobParams& prm) {
 	tsPrint("Animation");
 	const int numAnimationJobs = unpackJobArg<int>(prm.args);
 	for (int i = 0; i < numAnimationJobs; ++i) {
-		startFunction(prm.job, [i](size_t threadIndex) { animateSkeleton(i); });
+		startFunction(prm.job, [i]([[maybe_unused]] size_t threadIndex) { animateSkeleton(i); });
 	}
 }
 
-void jobSyncSimAndRendering(const JobParams& prm) {
+void jobSyncSimAndRendering([[maybe_unused]] const JobParams& prm) {
 	tsPrint("Sync simulation & rendering");
 }
 
@@ -158,7 +158,7 @@ void jobDraw(const JobParams& prm) {
 	startJob(drawLoop);
 }
 
-void jobSubmitCommandBuffers(const JobParams& prm) {
+void jobSubmitCommandBuffers([[maybe_unused]] const JobParams& prm) {
 	tsPrint("Submit rendering");
 }
 
@@ -173,7 +173,7 @@ void jobRender(const JobParams& prm) {
 	startJob(cullJob);
 }
 
-void launchMissile(int index, float /*velocity*/) {
+void launchMissile([[maybe_unused]] int index, float /*velocity*/) {
 	std::this_thread::sleep_for(std::chrono::microseconds(10));
 	std::atomic_fetch_add<size_t>(&completeCount, 1);
 }
@@ -182,7 +182,7 @@ JobId addTestJobs(Test& test) {
 	const JobId rootJob = createJob();
 	const JobId animationJob = createChildJob(rootJob);
 	for (int i = 0; i < test.numSkeletons; ++i) {
-		startFunction(animationJob, [i](size_t threadIndex) { animateSkeleton(i); });
+		startFunction(animationJob, [i]([[maybe_unused]] size_t threadIndex) { animateSkeleton(i); });
 	}
 	startJob(animationJob);
 	return rootJob;

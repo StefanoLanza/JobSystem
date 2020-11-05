@@ -15,13 +15,21 @@ The implementation is based on the job system described in the [Molecular Matter
 * A C++ 17 conformant compiler
 
 # INSTALLATION
-* Clone the repository to a local folder
-* For testing
-  * Run ```premake5.exe vs2019``` to generate a Visual Studio 2019 solution
+* Clone the repository to a local folder:
+  git clone https://github.com/StefanoLanza/JobSystem.git
+* JobSystem uses [Premake](https://premake.github.io/) to generate projects for Windows and MacOS. 
+* On Windows
+  * Run ```premake5.exe vs201X``` (either vs2017 or vs2019) to generate a Visual Studio solution
+  * Open build/vs2019/Typhoon-JobSystem.sln
   * Select a build configuration (Release, Debug, Win32, x64)
-  * Build and run the UnitTest project or one of the Example projects
+  * Build and run the examples and the UnitTest project
+* On MacOS
+  * Run ```premake xcode4``` to generate an XCode workspace
+  * Open build/xcode4/Typhoon-JobSystem.xcworkspace
+  * Select a scheme under Product/Scheme/
+  * Build and run the examples and the UnitTest scheme
 * For integration in your own project
-  * Add the contents of the include and src folder to your project build pipeline.
+  * Add the contents of the include and src folder to your project build pipeline. Please see premake5.lua as a reference. 
 
 # CONFIGURATION
 Look at the file src/config.h Here you can find configuration settings for the library. You can change these settings by either editing this file or by defining them with the preprocessor in your build configuration.
