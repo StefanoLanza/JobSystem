@@ -1,3 +1,14 @@
+-- Options
+newoption {
+	trigger     = "with-tests",
+	description = "Build the unit test application",
+}
+
+newoption {
+	trigger     = "with-examples",
+	description = "Build the examples",
+}
+
 -- Global settings
 local workspacePath = path.join("build/", _ACTION)  -- e.g. build/vs2019
 
@@ -34,6 +45,10 @@ filter { vs }
 filter { xcode }
 	system "macosx"
 	systemversion("10.12") -- MACOSX_DEPLOYMENT_TARGET
+
+filter {  "toolset:clang" }
+    buildoptions { "-stdlib=libc++" }
+    linkoptions { "-stdlib=libc++ -v -pthread" }
 
 filter { x86 }
 	architecture "x86"
@@ -78,11 +93,17 @@ project("JobSystem")
 	files "include/**.*"
 	includedirs { "src", "include", }
 
+if _OPTIONS["with-tests"] then
+
 project("UnitTest")
 	kind "ConsoleApp"
 	links("JobSystem")
 	files "tests/**.cpp"
 	sysincludedirs { "./", "external", }
+
+end
+
+if _OPTIONS["with-examples"] then
 
 project("Example1")
 	kind "ConsoleApp"
@@ -113,3 +134,6 @@ project("Example5")
 	files "examples/example5.cpp"
 	sysincludedirs { "./", }
 	links("JobSystem")
+
+end
+
