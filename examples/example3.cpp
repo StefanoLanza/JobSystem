@@ -108,7 +108,7 @@ void run_mt(Particle* particles, size_t numParticles, float dt) {
 
 } // namespace
 
-int __cdecl main(int /*argc*/, char* /*argv*/[]) {
+int main(int /*argc*/, char* /*argv*/[]) {
 	constexpr float             dt = 1.f / 60.f; // seconds
 	constexpr size_t            numParticles = 65536;
 	alignas(16) static Particle particles[numParticles];

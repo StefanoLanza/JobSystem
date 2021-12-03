@@ -49,7 +49,7 @@ void launchMissile(size_t threadIndex, int index, float velocity) {
 
 } // namespace
 
-int __cdecl main(int /*argc*/, char* /*argv*/[]) {
+int main(int /*argc*/, char* /*argv*/[]) {
 	const size_t numWorkerThreads = std::thread::hardware_concurrency() - 1;
 	initJobSystem(defaultMaxJobs, numWorkerThreads);
 

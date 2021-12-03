@@ -50,6 +50,11 @@ filter {  "toolset:clang" }
     buildoptions { "-stdlib=libc++" }
     linkoptions { "-stdlib=libc++ -v -pthread" }
 
+filter {  "toolset:gcc" }
+    -- https://stackoverflow.com/questions/39236917/using-gccs-link-time-optimization-with-static-linked-libraries
+    buildoptions { "-ffat-lto-objects" }
+    linkoptions { "-pthread" }
+
 filter { x86 }
 	architecture "x86"
 	  

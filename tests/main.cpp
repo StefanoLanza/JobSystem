@@ -302,7 +302,7 @@ TEST_CASE("Lambdas") {
 	const JobId rootJob = createJob();
 	const float velocity = 10.f;
 	for (int i = 0; i < test.numLambdas; ++i) {
-		startFunction(rootJob, [i, velocity](size_t threadIndex) { launchMissile(i, velocity); });
+		startFunction(rootJob, [i, velocity]([[maybe_unused]] size_t threadIndex) { launchMissile(i, velocity); });
 	}
 
 	startAndWaitForJob(rootJob);
@@ -383,7 +383,7 @@ TEST_CASE("Game Frame") {
 	destroyJobSystem();
 }
 
-int __cdecl main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
 	const int result = Catch::Session().run(argc, argv);
 	return result;
 }

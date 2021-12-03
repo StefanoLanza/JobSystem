@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cassert>
+#include <condition_variable>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -263,11 +264,11 @@ bool isJobFinished(JobSystem& js, JobId jobId) {
 void nullFunction(const JobParams& /*prm*/) {
 }
 
-void* __cdecl mallocWrap(size_t size) {
+void* mallocWrap(size_t size) {
 	return malloc(size);
 }
 
-void __cdecl freeWrap(void* ptr) {
+void freeWrap(void* ptr) {
 	free(ptr);
 }
 
@@ -529,13 +530,13 @@ void parallelForImpl(const JobParams& prm) {
 	if (data.count > data.splitThreshold) {
 		// split in two
 		const uint32_t     leftCount = data.count / 2u;
-		ParallelForJobData leftData { data.function, data.splitThreshold, data.offset, leftCount };
+		ParallelForJobData leftData { data.function, data.splitThreshold, data.offset, leftCount, {} };
 		std::memcpy(leftData.functionArgs, data.functionArgs, sizeof leftData.functionArgs);
 		JobId left = createChildJob(prm.job, parallelForImpl, leftData);
 		startJob(left);
 
 		const uint32_t     rightCount = data.count - leftCount;
-		ParallelForJobData rightData { data.function, data.splitThreshold, data.offset + leftCount, rightCount };
+		ParallelForJobData rightData { data.function, data.splitThreshold, data.offset + leftCount, rightCount, {} };
 		std::memcpy(rightData.functionArgs, data.functionArgs, sizeof rightData.functionArgs);
 		JobId right = createChildJob(prm.job, parallelForImpl, rightData);
 		startJob(right);

@@ -58,7 +58,7 @@ void jobPhysics(const JobParams& prm) {
 
 } // namespace
 
-int __cdecl main(int /*argc*/, char* /*argv*/[]) {
+int main(int /*argc*/, char* /*argv*/[]) {
 	// Custom allocator tracking memory
 	size_t memory = 0;
 	auto   customAlloc = [&memory](size_t size) {

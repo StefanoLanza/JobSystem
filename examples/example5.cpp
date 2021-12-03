@@ -139,7 +139,7 @@ void run_mt(Image& image) {
 
 } // namespace
 
-int __cdecl main(int /*argc*/, char* /*argv*/[]) {
+int main(int /*argc*/, char* /*argv*/[]) {
 	Image image = allocImage(1024, 1024, 32);
 	run_st(image);
 	run_mt(image);
