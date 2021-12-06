@@ -57,7 +57,7 @@ JobId parallelFor(JobId parent, size_t splitThreshold, ParallelForFunction funct
 	static_assert((std::is_pod_v<ArgType> && ... && true));
 
 	auto                       argTuple = std::make_tuple(args...);
-	detail::ParallelForJobData jobData { function, (uint32_t)splitThreshold, 0, (uint32_t)elementCount };
+	detail::ParallelForJobData jobData { function, (uint32_t)splitThreshold, 0, (uint32_t)elementCount, {} };
 	// Store extra arguments in the job data
 	static_assert(sizeof argTuple <= sizeof jobData.functionArgs);
 	std::memcpy(jobData.functionArgs, &argTuple, sizeof argTuple);

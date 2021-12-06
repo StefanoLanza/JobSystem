@@ -34,10 +34,7 @@ workspace ("Typhoon-JobSystem")
 	rtti "Off"
 
 filter { vs }
-	buildoptions
-	{
-		"/permissive-",
-	}
+	buildoptions { "/permissive-", }
 	system "Windows"
 	defines { "_ENABLE_EXTENDED_ALIGNED_STORAGE", }
 	-- systemversion "10.0.17134.0"
@@ -45,10 +42,6 @@ filter { vs }
 filter { xcode }
 	system "macosx"
 	systemversion("10.12") -- MACOSX_DEPLOYMENT_TARGET
-
-filter {  "toolset:clang" }
-    buildoptions { "-stdlib=libc++" }
-    linkoptions { "-stdlib=libc++ -v -pthread" }
 
 filter {  "toolset:gcc" }
     -- https://stackoverflow.com/questions/39236917/using-gccs-link-time-optimization-with-static-linked-libraries

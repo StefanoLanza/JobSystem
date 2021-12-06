@@ -14,6 +14,7 @@ using namespace Typhoon;
 
 namespace {
 
+// Set to 2 for more verbose logging
 #define LOG_LEVEL 1
 
 struct Test {
@@ -70,12 +71,10 @@ void updateParticles(size_t offset, size_t count, const void* args, [[maybe_unus
 	}
 }
 
-void checkParticles(const Particle* particles, size_t particleCount) {
-	float v = 0.f;
+void checkParticles(const Particle* particles, size_t particleCount, float dt) {
 	for (size_t i = 0; i < particleCount; ++i) {
-		CHECK(particles[i].x == v);
-		CHECK(particles[i].y == v);
-		v += 0.05f;
+		CHECK(particles[i].x == particles[i].vx * dt);
+		CHECK(particles[i].y == particles[i].vy * dt);
 	}
 }
 
@@ -188,18 +187,19 @@ JobId addTestJobs(Test& test) {
 	return rootJob;
 }
 
-JobId addParallelParticleJobs(JobId parentJob, Particle* particles, size_t particleCount) {
+JobId addParallelParticleJobs(JobId parentJob, size_t splitThreshold, Particle* particles, size_t particleCount, float dt, float dvx, float dvy) {
 	// Reset particles
-	float v = 0.f;
+	float vx = 0.f;
+	float vy = 0.f;
 	for (size_t i = 0; i < particleCount; ++i) {
 		particles[i].x = 0.f;
 		particles[i].y = 0.f;
-		particles[i].vx = v;
-		particles[i].vy = v;
-		v += 0.05f;
+		particles[i].vx = vx;
+		particles[i].vy = vy;
+		vx += dvx;
+		vy += dvy;
 	}
-	constexpr float dt = 1.f;
-	const JobId     job = parallelFor(parentJob, 2048, updateParticles, particleCount, particles, dt);
+	const JobId     job = parallelFor(parentJob, splitThreshold, updateParticles, particleCount, particles, dt);
 	startJob(job);
 	return job;
 }
@@ -222,7 +222,7 @@ JobId simulateGameFrame(Test& test) {
 	const JobId simulateJob = createChildJob(rootJob, jobSimulate);
 	const JobId physicsJob = createChildJob(simulateJob, jobPhysics, test.numRigidBodies);
 	const JobId animationJob = addContinuation(physicsJob, jobAnimation, test.numSkeletons);
-	const JobId particleJob = addParallelParticleJobs(simulateJob, particles, std::size(particles));
+	const JobId particleJob = addParallelParticleJobs(simulateJob, 1024, particles, std::size(particles), 1.f, 0.05f, 0.025f);
 	const JobId syncJob = addContinuation(simulateJob, jobSyncSimAndRendering);
 	const JobId renderJob = addContinuation(syncJob, jobRender, test.numModels);
 	const JobId vsyncJob = addContinuation(renderJob, present);
@@ -334,8 +334,13 @@ TEST_CASE("Parallel") {
 
 	auto startTime = std::chrono::steady_clock::now();
 
-	alignas(16) static Particle particles[8192];
-	const JobId                 rootJob = addParallelParticleJobs(nullJobId, particles, std::size(particles));
+	constexpr float dt = 1.0f;
+	constexpr float dvx = 0.05f;
+	constexpr float dvy = 0.025f;
+	constexpr size_t splitThreshold = 1024;
+
+	alignas(16) static Particle particles[2048]; ///8192];
+	const JobId                 rootJob = addParallelParticleJobs(nullJobId, splitThreshold, particles, std::size(particles), dt, dvx, dvy);
 	waitForJob(rootJob);
 
 	auto endTime = std::chrono::steady_clock::now();
@@ -343,7 +348,7 @@ TEST_CASE("Parallel") {
 	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
 	print("");
 
-	checkParticles(particles, std::size(particles));
+	checkParticles(particles, std::size(particles), dt);
 
 	destroyJobSystem();
 }

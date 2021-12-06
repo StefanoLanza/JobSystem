@@ -28,6 +28,8 @@ void print(const char* msgFormat, ...) {
 	va_end(msgArgs);
 }
 
+#if _DEBUG
+
 void tsPrint(const char* msgFormat, ...) {
 	va_list msgArgs;
 	va_start(msgArgs, msgFormat);
@@ -40,6 +42,8 @@ void tsPrint(const char* msgFormat, ...) {
 
 	va_end(msgArgs);
 }
+
+#endif
 
 struct Particle {
 	float x, y;
