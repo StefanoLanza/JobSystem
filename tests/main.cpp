@@ -2,7 +2,7 @@
 #include <cassert>
 #include <chrono>
 #include <cstdarg>
-#include <include/jobSystem.h>
+#include <jobSystem/jobSystem.h>
 #include <iostream>
 #include <mutex>
 #include <thread>

@@ -1,6 +1,6 @@
 // This example shows how to organize a typical game frame into jobs
 
-#include <include/jobSystem.h>
+#include <jobSystem/jobSystem.h>
 
 #include <atomic>
 #include <cassert>

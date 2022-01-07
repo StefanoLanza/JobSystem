@@ -1,6 +1,6 @@
 // This example shows how to execute concurrently jobs coded as C++ lambdas
 
-#include <include/jobSystem.h>
+#include <jobSystem/jobSystem.h>
 
 #include <atomic>
 #include <cassert>

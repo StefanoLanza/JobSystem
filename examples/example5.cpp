@@ -1,6 +1,6 @@
 // This example shows how to process an image with multiple threads
 
-#include <include/jobSystem.h>
+#include <jobSystem/jobSystem.h>
 
 #include <atomic>
 #include <cassert>

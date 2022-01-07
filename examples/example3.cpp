@@ -1,6 +1,6 @@
 // This example shows how to execute a parallel for loop
 
-#include <include/jobSystem.h>
+#include <jobSystem/jobSystem.h>
 
 #include <atomic>
 #include <cassert>
