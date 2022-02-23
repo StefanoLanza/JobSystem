@@ -69,7 +69,7 @@ filter { filter_vs, filter_debug, }
 filter { filter_vs, filter_release, }
 	defines { "_ITERATOR_DEBUG_LEVEL=0", "_SECURE_SCL=0", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1",  }
 
-filter { debug }
+filter { filter_debug }
 	defines { "_DEBUG", "DEBUG", }
 	flags   { "NoManifest", }
 	optimize("Off")
@@ -78,7 +78,7 @@ filter { debug }
 	symbols "Full"
 	runtime "Debug"
 
-filter { release }
+filter { filter_release }
 	defines { "NDEBUG", }
 	flags   { "NoManifest", "LinkTimeOptimization", "NoBufferSecurityCheck", "NoRuntimeChecks", }
 	optimize("Full")
