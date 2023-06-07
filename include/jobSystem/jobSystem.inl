@@ -24,7 +24,7 @@ void parallelForImpl(const JobParams& prm);
 
 template <typename... ArgType>
 JobId createJob(JobFunction function, ArgType... args) {
-	static_assert((std::is_pod_v<ArgType> && ... && true));
+	static_assert((std::is_trivially_copyable_v<ArgType> && ... && true));
 
 	auto argTuple = std::make_tuple(args...);
 	return createJobImpl(function, &argTuple, sizeof argTuple);
@@ -32,7 +32,7 @@ JobId createJob(JobFunction function, ArgType... args) {
 
 template <typename... ArgType>
 JobId createChildJob(JobId parentJobId, JobFunction function, ArgType... args) {
-	static_assert((std::is_pod_v<ArgType> && ... && true));
+	static_assert((std::is_trivially_copyable_v<ArgType> && ... && true));
 
 	auto argTuple = std::make_tuple(args...);
 	return detail::createChildJobImpl(parentJobId, function, &argTuple, sizeof argTuple);
@@ -46,7 +46,7 @@ void startChildJob(JobId parentJobId, JobFunction function, ArgType... args) {
 
 template <typename... ArgType>
 JobId addContinuation(JobId job, JobFunction function, ArgType... args) {
-	static_assert((std::is_pod_v<ArgType> && ... && true));
+	static_assert((std::is_trivially_copyable_v<ArgType> && ... && true));
 
 	auto argTuple = std::make_tuple(args...);
 	return detail::addContinuationImpl(job, function, &argTuple, sizeof argTuple);
@@ -54,7 +54,7 @@ JobId addContinuation(JobId job, JobFunction function, ArgType... args) {
 
 template <typename... ArgType>
 JobId parallelFor(JobId parent, size_t splitThreshold, ParallelForFunction function, size_t elementCount, const ArgType&... args) {
-	static_assert((std::is_pod_v<ArgType> && ... && true));
+	static_assert((std::is_trivially_copyable_v<ArgType> && ... && true));
 
 	auto                       argTuple = std::make_tuple(args...);
 	detail::ParallelForJobData jobData { function, (uint32_t)splitThreshold, 0, (uint32_t)elementCount, {} };
@@ -66,7 +66,7 @@ JobId parallelFor(JobId parent, size_t splitThreshold, ParallelForFunction funct
 
 template <typename ArgType>
 ArgType unpackJobArg(const void* args) {
-	static_assert((std::is_pod_v<ArgType>));
+	static_assert((std::is_trivially_copyable_v<ArgType>));
 
 	ArgType arg;
 	std::memcpy(&arg, args, sizeof arg);
@@ -75,7 +75,7 @@ ArgType unpackJobArg(const void* args) {
 
 template <typename... ArgType>
 std::tuple<ArgType...> unpackJobArgs(const void* args) {
-	static_assert((std::is_pod_v<ArgType> && ... && true));
+	static_assert((std::is_trivially_copyable_v<ArgType> && ... && true));
 
 	std::tuple<ArgType...> tuple;
 	std::memcpy(&tuple, args, sizeof tuple);

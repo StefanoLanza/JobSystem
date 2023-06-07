@@ -10,7 +10,7 @@ newoption {
 }
 
 -- Global settings
-local workspacePath = path.join("build/", _ACTION)  -- e.g. build/vs2019
+local workspacePath = path.join("build/", _ACTION)  -- e.g. build/vs2022
 
 -- Filters
 local filter_vs = "action:vs*"
@@ -100,7 +100,7 @@ project("UnitTest")
 	kind "ConsoleApp"
 	links("JobSystem")
 	files "tests/**.cpp"
-	sysincludedirs { "./", "external", "include",}
+	externalincludedirs { "./", "external", "include",}
 
 end
 
@@ -109,31 +109,31 @@ if _OPTIONS["with-examples"] then
 project("Example1")
 	kind "ConsoleApp"
 	files "examples/example1.cpp"
-	sysincludedirs { "./", "include", }
+	externalincludedirs { "./", "include", }
 	links("JobSystem")
 
 project("Example2")
 	kind "ConsoleApp"
 	files "examples/example2.cpp"
-	sysincludedirs { "./", "include", }
+	externalincludedirs { "./", "include", }
 	links("JobSystem")
 
 project("Example3")
 	kind "ConsoleApp"
 	files "examples/example3.cpp"
-	sysincludedirs { "./", "include", }
+	externalincludedirs { "./", "include", }
 	links("JobSystem")
 
 project("Example4")
 	kind "ConsoleApp"
 	files "examples/example4.cpp"
-	sysincludedirs { "./", "include", }
+	externalincludedirs { "./", "include", }
 	links("JobSystem")
 
 project("Example5")
 	kind "ConsoleApp"
 	files "examples/example5.cpp"
-	sysincludedirs { "./", "include", }
+	externalincludedirs { "./", "include", }
 	links("JobSystem")
 
 end
