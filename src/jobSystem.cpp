@@ -68,6 +68,7 @@ struct JobSystem {
 	JobQueue                 queues[maxThreads];
 	std::mutex               cv_m;
 	std::condition_variable  semaphore;
+	std::atomic_int32_t      activeJobCount { 0 };
 	bool                     isRunning;
 };
 
@@ -90,21 +91,24 @@ JobQueue& getThisThreadQueue(JobSystem& js) {
 // Adds a job to the private end of the queue (LIFO)
 void pushJob(JobQueue& queue, JobId jobId, JobSystem& js) {
 	assert(queue.threadId == std::this_thread::get_id());
+	assert(queue.top <= queue.bottom);
 	// TODO check capacity
 	std::unique_lock lock { queue.mutex };
 	queue.jobIds[queue.bottom & queue.jobPoolMask] = jobId;
 	++queue.bottom;
-	js.semaphore.notify_one(); // wake up one working thread
+	js.activeJobCount.fetch_add(1);
+	js.semaphore.notify_all(); // wake up one working thread
 }
 
 // Pops a job from the private end of the queue (LIFO)
-JobId popJob(JobQueue& queue) {
+JobId popJob(JobQueue& queue, JobSystem& js) {
 	assert(queue.threadId == std::this_thread::get_id());
 	std::lock_guard lock { queue.mutex };
 	if (queue.bottom <= queue.top) {
 		return nullJobId;
 	}
 	--queue.bottom;
+	js.activeJobCount.fetch_sub(1);
 	return queue.jobIds[queue.bottom & queue.jobPoolMask];
 }
 
@@ -155,22 +159,22 @@ void executeJob(JobId jobId, JobSystem& js, size_t threadIndex) {
 }
 
 JobId getNextJob(JobQueue& queue, JobSystem& js) {
-	JobId job = popJob(queue);
+	JobId job = popJob(queue, js);
 	if (! job) {
 #if TY_JS_STEALING
-		// Steal from other queues
+		// This worker's queue is empty. Steal from other queues
 		// TODO Best strategy ?
 #if 0
 		const size_t otherQueue = (queue.index + 1) % js.threadCount;
 #else
-		const size_t otherQueue = (queue.index + rand()) % js.threadCount;
+		const size_t offset = 1 + (rand() % js.threadCount - 1);
+		const size_t otherQueueIndex = (queue.index + offset) % js.threadCount;
 #endif
-		if (otherQueue != queue.index) {
-			job = stealJob(js.queues[otherQueue]);
-			if (job) {
-				++queue.stats.numStolenJobs;
-				return job;
-			}
+		assert(otherQueueIndex != queue.index);
+		job = stealJob(js.queues[otherQueueIndex]);
+		if (job) {
+			++queue.stats.numStolenJobs;
+			return job;
 		}
 #endif
 		// std::this_thread::yield();
@@ -184,15 +188,15 @@ void worker(JobQueue& queue, size_t threadIndex, JobSystem& js) {
 	queue.threadId = std::this_thread::get_id();
 	while (true) {
 		std::unique_lock lk { js.cv_m };
-		js.semaphore.wait(lk); //, [&js] { return ! js.isRunning; }); // TODO Wrong, this only wakes up one thread and puts all others to sleep
+		js.semaphore.wait(lk, [&js] { return ! js.isRunning; });
+		if (! js.isRunning) {
+			break;
+		}
 		if (JobId job = getNextJob(queue, js); job) {
 			// Release lock
 			lk.unlock();
 			executeJob(job, js, queue.index);
 			++queue.stats.numExecutedJobs;
-		}
-		if (! js.isRunning) {
-			break;
 		}
 	}
 }
