@@ -32,17 +32,17 @@ struct JobParams {
 
 /**
  * @brief Job function
-*/
+ */
 using JobFunction = void (*)(const JobParams&);
 
 /**
  * @brief Job lambda
-*/
+ */
 using JobLambda = std::function<void(size_t threadIndex)>;
 
 /**
  * @brief Parallel for function.
-*/
+ */
 using ParallelForFunction = void (*)(size_t elementCount, size_t splitThreshold, const void* functionArgs, size_t threadIndex);
 
 /**
@@ -119,26 +119,26 @@ JobId createChildJob(JobId parentJobId, JobFunction function, ArgType... args);
 /**
  * @brief Start a job
  * @param jobId job identifier
-*/
+ */
 void startJob(JobId jobId);
 
 /**
  * @brief Wait for a job to complete
- * @param jobId job identifier 
-*/
+ * @param jobId job identifier
+ */
 void waitForJob(JobId jobId);
 
 /**
  * @brief Helper: start a job and wait for its completion
  * @param jobId job identifier
-*/
+ */
 void startAndWaitForJob(JobId jobId);
 
 /**
  * @brief Create and start a child job executing a lambda function
  * @param parentJobId parent job identifier
  * @param lambda lambda function
-*/
+ */
 void startFunction(JobId parentJobId, JobLambda&& lambda);
 
 /**
@@ -146,7 +146,7 @@ void startFunction(JobId parentJobId, JobLambda&& lambda);
  * @param job previous job identifier
  * @param function function associated with the continuation
  * @return continuation identifier
-*/
+ */
 JobId addContinuation(JobId job, JobFunction function);
 
 /**
@@ -155,7 +155,7 @@ JobId addContinuation(JobId job, JobFunction function);
  * @param function function associated with the continuation
  * @param ...args function arguments
  * @return continuation identifier
-*/
+ */
 template <typename... ArgType>
 JobId addContinuation(JobId job, JobFunction function, ArgType... args);
 
@@ -173,19 +173,19 @@ JobId addContinuation(JobId jobId, JobLambda&& lambda);
  * @param parentJobId parent job identifier
  * @param function function associated with the job
  * @param ...args function arguments
-*/
+ */
 template <typename... ArgType>
 void startChildJob(JobId parentJobId, JobFunction function, ArgType... args);
 
 /**
  * @brief Execute a parallel for loop
  * @param parentJobId parent job identifier
- * @param elementCount element count 
+ * @param elementCount element count
  * @param splitThreshold split threshold used to break the loop into threads, in elements
  * @param function associated with the job
  * @param ...args  function arguments
- * @return 
-*/
+ * @return
+ */
 template <typename... ArgType>
 JobId parallelFor(JobId parentJobId, size_t splitThreshold, ParallelForFunction function, size_t elementCount, const ArgType&... args);
 
@@ -193,9 +193,16 @@ JobId parallelFor(JobId parentJobId, size_t splitThreshold, ParallelForFunction 
  * @brief Utility to unpack arguments
  * @param args pointer to a buffer containing arguments
  * @return a tuple with the unpacked arguments
-*/
+ */
 template <typename... ArgType>
 std::tuple<ArgType...> unpackJobArgs(const void* args);
+
+struct ThreadStats {
+	size_t numExecutedJobs;
+	size_t numStolenJobs;
+};
+
+ThreadStats getThreadStats(size_t threadIdx);
 
 } // namespace Typhoon
 

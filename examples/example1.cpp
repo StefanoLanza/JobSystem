@@ -44,7 +44,7 @@ void tsPrint(const char* msgFormat, ...) {
 void updateRigidBody(const JobParams& prm) {
 	const int bodyIndex = unpackJobArg<int>(prm.args);
 	tsPrint("[thread %zd] Update rigid body [%d]", prm.threadIndex, bodyIndex);
-	std::this_thread::sleep_for(std::chrono::microseconds(20)); // simulate work
+	std::this_thread::sleep_for(std::chrono::microseconds(10)); // simulate work
 }
 
 void jobPhysics(const JobParams& prm) {
@@ -76,7 +76,7 @@ int main(int /*argc*/, char* /*argv*/[]) {
 	const auto startTime = std::chrono::steady_clock::now();
 
 	const JobId rootJob = createJob();
-	const JobId physicsJob = createChildJob(rootJob, jobPhysics, 1000);
+	const JobId physicsJob = createChildJob(rootJob, jobPhysics, 100);
 	startJob(physicsJob);
 	startAndWaitForJob(rootJob);
 
@@ -84,6 +84,13 @@ int main(int /*argc*/, char* /*argv*/[]) {
 	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
 	print("");
+
+	for (size_t i = 0; i < getWorkerThreadCount(); ++i) {
+		auto stats = getThreadStats(i);
+		print("Thread %zd", i);
+		print("  Executed jobs: %zd", stats.numExecutedJobs);
+		print("  Stolen jobs: %zd", stats.numStolenJobs);
+	}
 
 	destroyJobSystem();
 	return 0;

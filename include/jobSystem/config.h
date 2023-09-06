@@ -23,11 +23,6 @@ constexpr size_t defaultParallelForSplitThreshold = 256; // TODO elements or byt
 #define TY_JS_JOB_ALIGNMENT 128
 #endif
 
-// Set to 1 for lockfree stealing queues. Currently not working robustly.
-#ifndef TY_JS_LOCKFREE
-#define TY_JS_LOCKFREE 0
-#endif
-
 // Set to 0 to disable job stealing (for debugging)
 #ifndef TY_JS_STEALING
 #define TY_JS_STEALING 1
