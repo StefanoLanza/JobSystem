@@ -167,7 +167,7 @@ JobId getNextJob(JobQueue& queue, JobSystem& js) {
 #if 0
 		const size_t otherQueue = (queue.index + 1) % js.threadCount;
 #else
-		const size_t offset = 1 + (rand() % js.threadCount - 1);
+		const size_t offset = 1 + (rand() % (js.threadCount - 1));
 		const size_t otherQueueIndex = (queue.index + offset) % js.threadCount;
 #endif
 		assert(otherQueueIndex != queue.index);
@@ -188,7 +188,7 @@ void worker(JobQueue& queue, size_t threadIndex, JobSystem& js) {
 	queue.threadId = std::this_thread::get_id();
 	while (true) {
 		std::unique_lock lk { js.cv_m };
-		js.semaphore.wait(lk, [&js] { return ! js.isRunning; });
+		js.semaphore.wait(lk, [&js] { return ! js.isRunning || js.activeJobCount.load() > 0; });
 		if (! js.isRunning) {
 			break;
 		}
@@ -399,6 +399,10 @@ JobId addContinuation(JobId job, JobLambda&& lambda) {
 
 ThreadStats getThreadStats(size_t threadIdx) {
 	return jobSystem->queues[threadIdx].stats;
+}
+
+size_t getThisThreadIndex() {
+	return getThisThreadQueue(*jobSystem).index;
 }
 
 namespace detail {

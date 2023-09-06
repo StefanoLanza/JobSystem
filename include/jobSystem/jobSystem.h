@@ -202,7 +202,16 @@ struct ThreadStats {
 	size_t numStolenJobs;
 };
 
+/**
+ * @param thread index
+ * @return statistics about a worker thread
+ */
 ThreadStats getThreadStats(size_t threadIdx);
+
+/**
+ * @return the index of the currently active worker thread
+ */
+size_t getThisThreadIndex();
 
 } // namespace Typhoon
 

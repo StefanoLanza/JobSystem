@@ -76,7 +76,7 @@ int main(int /*argc*/, char* /*argv*/[]) {
 	const auto startTime = std::chrono::steady_clock::now();
 
 	const JobId rootJob = createJob();
-	const JobId physicsJob = createChildJob(rootJob, jobPhysics, 100);
+	const JobId physicsJob = createChildJob(rootJob, jobPhysics, 1000);
 	startJob(physicsJob);
 	startAndWaitForJob(rootJob);
 

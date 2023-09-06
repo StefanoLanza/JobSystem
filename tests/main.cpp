@@ -15,15 +15,15 @@ using namespace Typhoon;
 namespace {
 
 // Set to 2 for more verbose logging
-#define LOG_LEVEL 1
+#define LOG_LEVEL 2
 
 struct Test {
 	static constexpr size_t maxJobs = defaultMaxJobs;
-	static constexpr int    numSkeletons = 256;
+	static constexpr int    numSkeletons = 128;
 	static constexpr int    numRigidBodies = 64;
 	static constexpr int    numFrames = 2;
 	static constexpr int    numLambdas = 1024;
-	static constexpr int    numModels = 600;
+	static constexpr int    numModels = 300;
 };
 
 std::atomic<size_t> completeCount;
@@ -48,7 +48,7 @@ void tsPrint(const char* msgFormat, ...) {
 	char msgBuffer[256];
 	vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
 	std::lock_guard<std::mutex> lock { coutMutex };
-	std::cout << "[Thread " << std::this_thread::get_id() << "] " << msgBuffer << std::endl;
+	std::cout << "[Thread " << getThisThreadIndex() << "] " << msgBuffer << std::endl;
 	std::cout.flush();
 
 	va_end(msgArgs);
@@ -83,6 +83,7 @@ void animateSkeleton([[maybe_unused]] int index) {
 	tsPrint("Animate skeleton: %d", index);
 #endif
 	std::atomic_fetch_add<size_t>(&completeCount, 1);
+	std::this_thread::sleep_for(std::chrono::microseconds(20));
 }
 
 struct Model {
