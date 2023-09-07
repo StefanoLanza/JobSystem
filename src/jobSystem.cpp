@@ -39,14 +39,16 @@ constexpr size_t sizeJob = sizeof(Job);
 static_assert(sizeJob == jobAlignment);
 
 struct JobQueue {
-	JobId*          jobIds;
-	size_t          jobPoolOffset;
-	size_t          jobPoolCapacity;
-	size_t          jobPoolMask;
-	size_t          jobIndex;
-	int             top;
-	int             bottom;
-	std::mutex      mutex;
+	JobId* jobIds;
+	size_t jobPoolOffset;
+	size_t jobPoolCapacity;
+	size_t jobPoolMask;
+	size_t jobIndex;
+	int    top;
+	int    bottom;
+#if TY_JS_STEALING
+	std::mutex      mutex;   // in case other threads steal a job from this queue
+#endif
 	std::thread::id threadId;
 	size_t          index;
 	ThreadStats     stats;
@@ -91,11 +93,15 @@ JobQueue& getThisThreadQueue(JobSystem& js) {
 // Adds a job to the private end of the queue (LIFO)
 void pushJob(JobQueue& queue, JobId jobId, JobSystem& js) {
 	assert(queue.threadId == std::this_thread::get_id());
-	assert(queue.top <= queue.bottom);
-	// TODO check capacity
-	std::unique_lock lock { queue.mutex };
-	queue.jobIds[queue.bottom & queue.jobPoolMask] = jobId;
-	++queue.bottom;
+	{
+#if TY_JS_STEALING
+		std::lock_guard lock { queue.mutex };
+#endif
+		assert(queue.top <= queue.bottom);
+		// TODO check capacity
+		queue.jobIds[queue.bottom & queue.jobPoolMask] = jobId;
+		++queue.bottom;
+	}
 	js.activeJobCount.fetch_add(1);
 	js.semaphore.notify_all(); // wake up working threads
 }
@@ -103,7 +109,9 @@ void pushJob(JobQueue& queue, JobId jobId, JobSystem& js) {
 // Pops a job from the private end of the queue (LIFO)
 JobId popJob(JobQueue& queue, JobSystem& js) {
 	assert(queue.threadId == std::this_thread::get_id());
+#if TY_JS_STEALING
 	std::lock_guard lock { queue.mutex };
+#endif
 	if (queue.bottom <= queue.top) {
 		return nullJobId;
 	}
@@ -145,8 +153,8 @@ void executeJob(JobId jobId, JobSystem& js, JobQueue& queue) {
 	assert(job.unfinished > 0);
 	const JobParams prm { jobId, queue.index, job.data };
 	if (job.isLambda) {
-		void* const      ptr = detail::alignPointer(job.data, alignof(JobLambda));
-		JobLambda* const lambda = static_cast<JobLambda*>(ptr);
+		void*      ptr = detail::alignPointer(job.data, alignof(JobLambda));
+		JobLambda* lambda = static_cast<JobLambda*>(ptr);
 		(*lambda)(queue.index); // call
 		lambda->~JobLambda();   // destruct
 		job.isLambda = false;
@@ -163,19 +171,15 @@ JobId getNextJob(JobQueue& queue, JobSystem& js) {
 #if TY_JS_STEALING
 		// This worker's queue is empty. Steal from other queues
 		// TODO Best strategy ?
-#if 0
-		const size_t otherQueue = (queue.index + 1) % js.threadCount;
-#else
 		const size_t offset = 1 + (rand() % (js.threadCount - 1));
 		const size_t otherQueueIndex = (queue.index + offset) % js.threadCount;
-#endif
 		assert(otherQueueIndex != queue.index);
 		job = stealJob(js.queues[otherQueueIndex]);
 		if (job) {
 			++queue.stats.numStolenJobs;
 			return job;
 		}
-#endif
+#endif // TY_JS_STEALING
 	}
 	return job;
 }
@@ -203,10 +207,11 @@ void worker(JobQueue& queue, size_t threadIndex, JobSystem& js) {
 }
 
 void stopThreads(JobSystem& js) {
-	std::unique_lock lock { js.cv_m };
-	js.isRunning = false;
+	{
+		std::unique_lock lock { js.cv_m };
+		js.isRunning = false;
+	}
 	js.semaphore.notify_all(); // notify working threads
-	lock.unlock();
 
 	for (auto& thread : js.workerThreads) {
 		thread.join();
@@ -284,8 +289,8 @@ void initJobSystem(size_t numJobsPerThread, size_t numWorkerThreads, const JobSy
 
 	for (size_t i = 0; i < threadCount; ++i) {
 		JobQueue& q = js->queues[i];
-		q.jobPoolOffset = i * numJobsPerThread;
 		q.jobIds = jobIdPool + i * numJobsPerThread;
+		q.jobPoolOffset = i * numJobsPerThread;
 		q.jobPoolCapacity = numJobsPerThread;
 		q.jobPoolMask = numJobsPerThread - 1;
 		q.top = 0;

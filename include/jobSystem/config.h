@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stddef.h> // size_t
+#include <cstddef> // size_t
 
 namespace Typhoon {
 
@@ -17,13 +17,13 @@ constexpr size_t defaultMaxJobs = 4096;
 constexpr size_t maxThreads = 32;
 constexpr size_t defaultParallelForSplitThreshold = 256; // TODO elements or bytes?
 
-// alignment of the Job structure
+// Alignment of the Job structure
 // The padding bytes are used to hold data for the associated Job function
 #ifndef TY_JS_JOB_ALIGNMENT
 #define TY_JS_JOB_ALIGNMENT 128
 #endif
 
-// Set to 0 to disable job stealing (for debugging)
+// Set to 0 to disable job stealing
 #ifndef TY_JS_STEALING
 #define TY_JS_STEALING 1
 #endif
