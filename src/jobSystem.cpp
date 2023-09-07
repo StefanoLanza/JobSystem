@@ -97,7 +97,7 @@ void pushJob(JobQueue& queue, JobId jobId, JobSystem& js) {
 	queue.jobIds[queue.bottom & queue.jobPoolMask] = jobId;
 	++queue.bottom;
 	js.activeJobCount.fetch_add(1);
-	js.semaphore.notify_all(); // wake up one working thread
+	js.semaphore.notify_all(); // wake up working threads
 }
 
 // Pops a job from the private end of the queue (LIFO)
@@ -124,38 +124,37 @@ JobId stealJob(JobQueue& queue) {
 }
 #endif
 
-void finishJob(JobSystem& js, JobId jobId) {
+void finishJob(JobSystem& js, JobId jobId, JobQueue& queue) {
 	Job&          job = getJob(js.jobPool, jobId);
 	const int32_t unfinishedJobs = --(job.unfinished);
 	assert(unfinishedJobs >= 0);
 	if (unfinishedJobs == 0) {
 		// Push continuations
-		JobQueue& queue = getThisThreadQueue(js);
 		for (JobId c = job.continuation; c; c = getJob(js.jobPool, c).next) {
 			pushJob(queue, c, js);
 		}
 
 		if (job.parent) {
-			finishJob(js, job.parent);
+			finishJob(js, job.parent, queue);
 		}
 	}
 }
 
-void executeJob(JobId jobId, JobSystem& js, size_t threadIndex) {
+void executeJob(JobId jobId, JobSystem& js, JobQueue& queue) {
 	Job& job = getJob(js.jobPool, jobId);
 	assert(job.unfinished > 0);
-	const JobParams prm { jobId, threadIndex, job.data };
+	const JobParams prm { jobId, queue.index, job.data };
 	if (job.isLambda) {
 		void* const      ptr = detail::alignPointer(job.data, alignof(JobLambda));
 		JobLambda* const lambda = static_cast<JobLambda*>(ptr);
-		(*lambda)(threadIndex); // call
+		(*lambda)(queue.index); // call
 		lambda->~JobLambda();   // destruct
 		job.isLambda = false;
 	}
 	else {
 		job.func(prm);
 	}
-	finishJob(js, jobId);
+	finishJob(js, jobId, queue);
 }
 
 JobId getNextJob(JobQueue& queue, JobSystem& js) {
@@ -177,7 +176,6 @@ JobId getNextJob(JobQueue& queue, JobSystem& js) {
 			return job;
 		}
 #endif
-		// std::this_thread::yield();
 	}
 	return job;
 }
@@ -195,8 +193,11 @@ void worker(JobQueue& queue, size_t threadIndex, JobSystem& js) {
 		if (JobId job = getNextJob(queue, js); job) {
 			// Release lock
 			lk.unlock();
-			executeJob(job, js, queue.index);
+			executeJob(job, js, queue);
 			++queue.stats.numExecutedJobs;
+		}
+		else {
+			std::this_thread::sleep_for(std::chrono::microseconds(1));
 		}
 	}
 }
@@ -354,12 +355,11 @@ void waitForJob(JobId jobId) {
 	assert(queue.threadId == std::this_thread::get_id()); // only the thread that created a job can wait for it
 	while (! isJobFinished(js, jobId)) {
 		if (JobId nextJob = getNextJob(queue, js); nextJob) {
-			executeJob(nextJob, js, queue.index);
+			executeJob(nextJob, js, queue);
 			++queue.stats.numExecutedJobs;
 		}
 		else {
-			// FIXME Sleep ?
-			// std::this_thread::sleep_for(std::chrono::microseconds(1667));
+			std::this_thread::sleep_for(std::chrono::microseconds(1));
 		}
 	}
 }
