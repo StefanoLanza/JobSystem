@@ -28,4 +28,9 @@ constexpr size_t defaultParallelForSplitThreshold = 256; // TODO elements or byt
 #define TY_JS_STEALING 1
 #endif
 
+// Set to 0 to disable profiling of worker threads
+#ifndef TY_JS_PROFILE
+#define TY_JS_PROFILE 0
+#endif
+
 } // namespace Typhoon

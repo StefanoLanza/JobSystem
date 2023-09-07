@@ -13,6 +13,7 @@ namespace Typhoon {
 namespace {
 
 constexpr size_t jobAlignment = TY_JS_JOB_ALIGNMENT;
+constexpr int    sleep_us = 1;
 
 #ifdef _DEBUG
 constexpr size_t jobPadding =
@@ -47,11 +48,14 @@ struct JobQueue {
 	int    top;
 	int    bottom;
 #if TY_JS_STEALING
-	std::mutex      mutex;   // in case other threads steal a job from this queue
+	std::mutex mutex; // in case other threads steal a job from this queue
 #endif
 	std::thread::id threadId;
 	size_t          index;
 	ThreadStats     stats;
+#if TY_JS_PROFILE
+	std::chrono::steady_clock::time_point startTime;
+#endif
 };
 
 thread_local size_t tl_threadIndex = 0;
@@ -93,6 +97,7 @@ JobQueue& getThisThreadQueue(JobSystem& js) {
 // Adds a job to the private end of the queue (LIFO)
 void pushJob(JobQueue& queue, JobId jobId, JobSystem& js) {
 	assert(queue.threadId == std::this_thread::get_id());
+	++queue.stats.numEnqueuedJobs;
 	{
 #if TY_JS_STEALING
 		std::lock_guard lock { queue.mutex };
@@ -134,14 +139,14 @@ JobId stealJob(JobQueue& queue) {
 
 void finishJob(JobSystem& js, JobId jobId, JobQueue& queue) {
 	Job&          job = getJob(js.jobPool, jobId);
-	const int32_t unfinishedJobs = --(job.unfinished);
-	assert(unfinishedJobs >= 0);
-	if (unfinishedJobs == 0) {
+	const int32_t unfinishedJobCount = --(job.unfinished);
+	assert(unfinishedJobCount >= 0);
+	if (unfinishedJobCount == 0) {
 		// Push continuations
 		for (JobId c = job.continuation; c; c = getJob(js.jobPool, c).next) {
 			pushJob(queue, c, js);
 		}
-
+		// Notify parent
 		if (job.parent) {
 			finishJob(js, job.parent, queue);
 		}
@@ -149,6 +154,9 @@ void finishJob(JobSystem& js, JobId jobId, JobQueue& queue) {
 }
 
 void executeJob(JobId jobId, JobSystem& js, JobQueue& queue) {
+#if TY_JS_PROFILE
+	const auto startTime = std::chrono::steady_clock::now();
+#endif
 	Job& job = getJob(js.jobPool, jobId);
 	assert(job.unfinished > 0);
 	const JobParams prm { jobId, queue.index, job.data };
@@ -163,6 +171,9 @@ void executeJob(JobId jobId, JobSystem& js, JobQueue& queue) {
 		job.func(prm);
 	}
 	finishJob(js, jobId, queue);
+#if TY_JS_PROFILE
+	queue.stats.runningTime += std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - startTime);
+#endif
 }
 
 JobId getNextJob(JobQueue& queue, JobSystem& js) {
@@ -170,10 +181,11 @@ JobId getNextJob(JobQueue& queue, JobSystem& js) {
 	if (! job) {
 #if TY_JS_STEALING
 		// This worker's queue is empty. Steal from other queues
-		// TODO Best strategy ?
+		// TODO How to steal from the queue with most jobs (usually the main one)
 		const size_t offset = 1 + (rand() % (js.threadCount - 1));
-		const size_t otherQueueIndex = (queue.index + offset) % js.threadCount;
+		const size_t otherQueueIndex = queue.index == 0 ? (queue.index + offset) % js.threadCount : 0;
 		assert(otherQueueIndex != queue.index);
+		++queue.stats.numAttemptedStealings;
 		job = stealJob(js.queues[otherQueueIndex]);
 		if (job) {
 			++queue.stats.numStolenJobs;
@@ -201,7 +213,8 @@ void worker(JobQueue& queue, size_t threadIndex, JobSystem& js) {
 			++queue.stats.numExecutedJobs;
 		}
 		else {
-			std::this_thread::sleep_for(std::chrono::microseconds(1));
+			lk.unlock();
+			std::this_thread::sleep_for(std::chrono::microseconds(sleep_us));
 		}
 	}
 }
@@ -306,6 +319,9 @@ void initJobSystem(size_t numJobsPerThread, size_t numWorkerThreads, const JobSy
 			// Worker thread
 			js->workerThreads.emplace_back(worker, std::ref(q), i, std::ref(*js));
 		}
+#if TY_JS_PROFILE
+		q.startTime = std::chrono::steady_clock::now();
+#endif
 	}
 
 	jobSystem = js;
@@ -364,7 +380,7 @@ void waitForJob(JobId jobId) {
 			++queue.stats.numExecutedJobs;
 		}
 		else {
-			std::this_thread::sleep_for(std::chrono::microseconds(1));
+			std::this_thread::sleep_for(std::chrono::microseconds(sleep_us));
 		}
 	}
 }
@@ -403,7 +419,12 @@ JobId addContinuation(JobId job, JobLambda&& lambda) {
 }
 
 ThreadStats getThreadStats(size_t threadIdx) {
-	return jobSystem->queues[threadIdx].stats;
+	auto& queue = jobSystem->queues[threadIdx];
+#if TY_JS_PROFILE
+	const auto endTime = std::chrono::steady_clock::now();
+	queue.stats.totalTime = std::chrono::duration_cast<std::chrono::microseconds>(endTime - queue.startTime);
+#endif
+	return queue.stats;
 }
 
 size_t getThisThreadIndex() {

@@ -2,48 +2,16 @@
 
 #include <jobSystem/jobSystem.h>
 
+#include "common.h"
+
 #include <atomic>
 #include <cassert>
 #include <chrono>
-#include <cstdarg>
-#include <iostream>
-#include <mutex>
 #include <thread>
 
 using namespace Typhoon;
 
 namespace {
-
-std::mutex coutMutex;
-
-void print(const char* msgFormat, ...) {
-	va_list msgArgs;
-	va_start(msgArgs, msgFormat);
-
-	char msgBuffer[256];
-	vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
-	std::cout << msgBuffer << std::endl;
-	std::cout.flush();
-
-	va_end(msgArgs);
-}
-
-#if _DEBUG
-
-void tsPrint(const char* msgFormat, ...) {
-	va_list msgArgs;
-	va_start(msgArgs, msgFormat);
-
-	char msgBuffer[256];
-	vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
-	std::lock_guard<std::mutex> lock { coutMutex };
-	std::cout << msgBuffer << std::endl;
-	std::cout.flush();
-
-	va_end(msgArgs);
-}
-
-#endif
 
 struct Particle {
 	float x, y;
@@ -66,7 +34,7 @@ void updateParticles(Particle* particles, size_t count, float dt) {
 		particles[i].x += particles[i].vx * dt;
 		particles[i].y += particles[i].vy * dt;
 	}
-	//std::this_thread::sleep_for(std::chrono::microseconds(20)); // simulate more work
+	std::this_thread::sleep_for(std::chrono::microseconds(20)); // simulate more work
 }
 
 void updateParticlesImpl(size_t offset, size_t count, const void* args, size_t threadIndex) {
@@ -100,12 +68,14 @@ void run_mt(Particle* particles, size_t numParticles, float dt) {
 	resetParticles(particles, numParticles);
 	const auto startTime = std::chrono::steady_clock::now();
 	const JobId rootJob = createJob();
-	const JobId particleJob = parallelFor(rootJob, 16384, updateParticlesImpl, numParticles, particles, dt);
+	const JobId particleJob = parallelFor(rootJob, 1024, updateParticlesImpl, numParticles, particles, dt);
 	startJob(particleJob);
 	startAndWaitForJob(rootJob);
 	const auto endTime = std::chrono::steady_clock::now();
 	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
+
+	printStats();
 
 	destroyJobSystem();
 }

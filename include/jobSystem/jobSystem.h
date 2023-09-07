@@ -10,6 +10,9 @@
 #include <cstdint>
 #include <functional>
 #include <tuple>
+#if TY_JS_PROFILE
+#include <chrono>
+#endif
 
 namespace Typhoon {
 
@@ -198,8 +201,14 @@ template <typename... ArgType>
 std::tuple<ArgType...> unpackJobArgs(const void* args);
 
 struct ThreadStats {
+	size_t numEnqueuedJobs;
 	size_t numExecutedJobs;
 	size_t numStolenJobs;
+	size_t numAttemptedStealings;
+#if TY_JS_PROFILE
+	std::chrono::microseconds totalTime;
+	std::chrono::microseconds runningTime;
+#endif
 };
 
 /**
