@@ -10,10 +10,12 @@
 
 namespace Typhoon {
 
+namespace Jobs {
+
 namespace {
 
 constexpr size_t jobAlignment = TY_JS_JOB_ALIGNMENT;
-constexpr int    sleep_us = 1;
+static_assert(jobAlignment >= 128 && detail::isPowerOfTwo(jobAlignment), "Job aligment must be a power of 2");
 
 #ifdef _DEBUG
 constexpr size_t jobPadding =
@@ -37,7 +39,6 @@ struct alignas(jobAlignment) Job {
 };
 
 constexpr size_t sizeJob = sizeof(Job);
-static_assert(sizeJob == jobAlignment);
 
 struct JobQueue {
 	JobId* jobIds;
@@ -531,5 +532,7 @@ void parallelForImpl(const JobParams& prm) {
 }
 
 } // namespace detail
+
+} // namespace Jobs
 
 } // namespace Typhoon

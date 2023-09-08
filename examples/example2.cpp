@@ -8,7 +8,7 @@
 #include <chrono>
 #include <thread>
 
-using namespace Typhoon;
+using namespace jobs;
 
 namespace {
 

@@ -9,7 +9,7 @@
 #include <thread>
 #include <new>
 
-using namespace Typhoon;
+using namespace Typhoon::Jobs;
 
 namespace {
 

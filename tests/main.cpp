@@ -7,12 +7,12 @@
 #define CATCH_CONFIG_RUNNER
 #include <Catch-master/single_include/catch2/catch.hpp>
 
-using namespace Typhoon;
+using namespace Typhoon::Jobs;
 
 namespace {
 
 // Set to 2 for more verbose logging
-#define LOG_LEVEL 2
+#define LOG_LEVEL 1
 
 struct Test {
 	static constexpr size_t maxJobs = defaultMaxJobs;
@@ -370,6 +370,5 @@ TEST_CASE("Game Frame") {
 }
 
 int main(int argc, char* argv[]) {
-	const int result = Catch::Session().run(argc, argv);
-	return result;
+	return Catch::Session().run(argc, argv);
 }
