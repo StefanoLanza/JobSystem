@@ -2,6 +2,8 @@
 
 namespace Typhoon {
 
+namespace Jobs {
+
 namespace detail {
 
 inline uintptr_t alignPointer(uintptr_t value, size_t alignment) {
@@ -10,6 +12,10 @@ inline uintptr_t alignPointer(uintptr_t value, size_t alignment) {
 
 inline void* alignPointer(void* ptr, size_t alignment) {
 	return reinterpret_cast<void*>(alignPointer(reinterpret_cast<uintptr_t>(ptr), alignment));
+}
+
+inline constexpr bool isPowerOfTwo(uint32_t v) {
+	return 0 == (v & (v - 1));
 }
 
 inline constexpr uint32_t nextPowerOfTwo(uint32_t v) {
@@ -24,5 +30,7 @@ inline constexpr uint32_t nextPowerOfTwo(uint32_t v) {
 }
 
 } // namespace detail
+
+} // namespace Jobs
 
 } // namespace Typhoon

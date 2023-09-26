@@ -2,51 +2,16 @@
 
 #include <jobSystem/jobSystem.h>
 
-#include <atomic>
+#include "common.h"
+
 #include <cassert>
 #include <chrono>
-#include <cstdarg>
-#include <iostream>
-#include <mutex>
 #include <thread>
 #include <new>
 
-using namespace Typhoon;
+using namespace Typhoon::Jobs;
 
 namespace {
-
-std::mutex coutMutex;
-
-void print(const char* msgFormat, ...) {
-	va_list msgArgs;
-	va_start(msgArgs, msgFormat);
-
-	char msgBuffer[256];
-#ifdef MSVC
-	vsnprintf_s(msgBuffer, std::size(msgBuffer), std::size(msgBuffer) - 1, msgFormat, msgArgs);
-#endif
-    std::cout << msgBuffer << std::endl;
-	std::cout.flush();
-
-	va_end(msgArgs);
-}
-
-#if _DEBUG
-
-void tsPrint(const char* msgFormat, ...) {
-	va_list msgArgs;
-	va_start(msgArgs, msgFormat);
-
-	char msgBuffer[256];
-    vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
-    std::lock_guard<std::mutex> lock { coutMutex };
-	std::cout << msgBuffer << std::endl;
-	std::cout.flush();
-
-	va_end(msgArgs);
-}
-
-#endif
 
 struct Image {
 	int width;
@@ -97,13 +62,11 @@ void processData(const Image& image, size_t offset, size_t count) {
 	}
 }
 
-void processImage(size_t offset, size_t count, const void* args, size_t threadIndex) {
+void processImage(size_t offset, size_t count, const void* args, [[maybe_unused]] size_t threadIndex) {
 	Image* const image = unpackJobArg<Image*>(args);
 	assert(image->bpp == 32);
 #if _DEBUG
 	tsPrint("[thread %zd] Process image. offset: %zd count: %zd;", threadIndex, offset, count);
-#else
-	(void)threadIndex;
 #endif
 	processData(*image, offset, count);
 }
@@ -137,6 +100,8 @@ void run_mt(Image& image) {
 	const auto endTime = std::chrono::steady_clock::now();
 	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
+
+	printStats();
 
 	destroyJobSystem();
 }

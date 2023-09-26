@@ -2,44 +2,15 @@
 
 #include <jobSystem/jobSystem.h>
 
-#include <atomic>
+#include "common.h"
+
 #include <cassert>
 #include <chrono>
-#include <cstdarg>
-#include <iostream>
-#include <mutex>
 #include <thread>
 
-using namespace Typhoon;
+using namespace jobs;
 
 namespace {
-
-std::mutex coutMutex;
-
-void print(const char* msgFormat, ...) {
-	va_list msgArgs;
-	va_start(msgArgs, msgFormat);
-
-	char msgBuffer[256];
-	vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
-	std::cout << msgBuffer << std::endl;
-	std::cout.flush();
-
-	va_end(msgArgs);
-}
-
-void tsPrint(const char* msgFormat, ...) {
-	va_list msgArgs;
-	va_start(msgArgs, msgFormat);
-
-	char msgBuffer[256];
-	vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
-	std::lock_guard<std::mutex> lock { coutMutex };
-	std::cout << msgBuffer << std::endl;
-	std::cout.flush();
-
-	va_end(msgArgs);
-}
 
 // Lambda
 void launchMissile(size_t threadIndex, int index, float velocity) {
@@ -68,6 +39,8 @@ int main(int /*argc*/, char* /*argv*/[]) {
 	const auto endTime = std::chrono::steady_clock::now();
 	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
+
+	printStats();
 
 	destroyJobSystem();
 	return 0;

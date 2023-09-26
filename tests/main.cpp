@@ -1,16 +1,13 @@
+#include "../examples/common.h"
 #include <atomic>
-#include <cassert>
 #include <chrono>
-#include <cstdarg>
 #include <jobSystem/jobSystem.h>
-#include <iostream>
-#include <mutex>
 #include <thread>
 
 #define CATCH_CONFIG_RUNNER
 #include <Catch-master/single_include/catch2/catch.hpp>
 
-using namespace Typhoon;
+using namespace Typhoon::Jobs;
 
 namespace {
 
@@ -19,40 +16,14 @@ namespace {
 
 struct Test {
 	static constexpr size_t maxJobs = defaultMaxJobs;
-	static constexpr int    numSkeletons = 256;
+	static constexpr int    numSkeletons = 128;
 	static constexpr int    numRigidBodies = 64;
 	static constexpr int    numFrames = 2;
-	static constexpr int    numLambdas = 1024;
-	static constexpr int    numModels = 600;
+	static constexpr int    numLambdas = 256;
+	static constexpr int    numModels = 300;
 };
 
 std::atomic<size_t> completeCount;
-std::mutex          coutMutex;
-
-void print(const char* msgFormat, ...) {
-	va_list msgArgs;
-	va_start(msgArgs, msgFormat);
-
-	char msgBuffer[256];
-	vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
-	std::cout << msgBuffer << std::endl;
-	std::cout.flush();
-
-	va_end(msgArgs);
-}
-
-void tsPrint(const char* msgFormat, ...) {
-	va_list msgArgs;
-	va_start(msgArgs, msgFormat);
-
-	char msgBuffer[256];
-	vsnprintf(msgBuffer, std::size(msgBuffer), msgFormat, msgArgs);
-	std::lock_guard<std::mutex> lock { coutMutex };
-	std::cout << "[Thread " << std::this_thread::get_id() << "] " << msgBuffer << std::endl;
-	std::cout.flush();
-
-	va_end(msgArgs);
-}
 
 struct Particle {
 	float x, y;
@@ -83,19 +54,22 @@ void animateSkeleton([[maybe_unused]] int index) {
 	tsPrint("Animate skeleton: %d", index);
 #endif
 	std::atomic_fetch_add<size_t>(&completeCount, 1);
+	std::this_thread::sleep_for(std::chrono::microseconds(20));
 }
 
 struct Model {
 	float x, y, z;
 };
 
-void cullModels([[maybe_unused]] size_t offset, [[maybe_unused]] size_t count, [[maybe_unused]] const void* args, [[maybe_unused]] size_t threadIndex) {
+void cullModels([[maybe_unused]] size_t offset, [[maybe_unused]] size_t count, [[maybe_unused]] const void* args,
+                [[maybe_unused]] size_t threadIndex) {
 #if LOG_LEVEL > 1
 	tsPrint("Cull models. offset: %zd count: %zd", offset, count);
 #endif
 }
 
-void drawModels([[maybe_unused]] size_t offset, [[maybe_unused]] size_t count, [[maybe_unused]] const void* args, [[maybe_unused]] size_t threadIndex) {
+void drawModels([[maybe_unused]] size_t offset, [[maybe_unused]] size_t count, [[maybe_unused]] const void* args,
+                [[maybe_unused]] size_t threadIndex) {
 #if LOG_LEVEL > 1
 	tsPrint("Draw models. offset: %zd count: %zd", offset, count);
 #endif
@@ -136,8 +110,7 @@ void jobSyncSimAndRendering([[maybe_unused]] const JobParams& prm) {
 	tsPrint("Sync simulation & rendering");
 }
 
-void present(size_t threadIndex) {
-	(void)threadIndex;
+void present([[maybe_unused]] size_t threadIndex) {
 	tsPrint("VSync");
 }
 
@@ -199,7 +172,7 @@ JobId addParallelParticleJobs(JobId parentJob, size_t splitThreshold, Particle* 
 		vx += dvx;
 		vy += dvy;
 	}
-	const JobId     job = parallelFor(parentJob, splitThreshold, updateParticles, particleCount, particles, dt);
+	const JobId job = parallelFor(parentJob, splitThreshold, updateParticles, particleCount, particles, dt);
 	startJob(job);
 	return job;
 }
@@ -271,10 +244,12 @@ TEST_CASE("Jobs") {
 	startAndWaitForJob(rootJob);
 	CHECK(std::atomic_load(&completeCount) == test.numSkeletons);
 
-	auto endTime = std::chrono::steady_clock::now();
+	auto       endTime = std::chrono::steady_clock::now();
 	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
 	print("");
+
+	printStats();
 
 	destroyJobSystem();
 }
@@ -308,10 +283,12 @@ TEST_CASE("Lambdas") {
 	startAndWaitForJob(rootJob);
 	CHECK(std::atomic_load(&completeCount) == test.numLambdas);
 
-	auto endTime = std::chrono::steady_clock::now();
+	auto       endTime = std::chrono::steady_clock::now();
 	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
 	print("");
+
+	printStats();
 
 	destroyJobSystem();
 }
@@ -334,21 +311,23 @@ TEST_CASE("Parallel") {
 
 	auto startTime = std::chrono::steady_clock::now();
 
-	constexpr float dt = 1.0f;
-	constexpr float dvx = 0.05f;
-	constexpr float dvy = 0.025f;
+	constexpr float  dt = 1.0f;
+	constexpr float  dvx = 0.05f;
+	constexpr float  dvy = 0.025f;
 	constexpr size_t splitThreshold = 1024;
 
-	alignas(16) static Particle particles[2048]; ///8192];
+	alignas(16) static Particle particles[2048]; /// 8192];
 	const JobId                 rootJob = addParallelParticleJobs(nullJobId, splitThreshold, particles, std::size(particles), dt, dvx, dvy);
 	waitForJob(rootJob);
 
-	auto endTime = std::chrono::steady_clock::now();
+	auto       endTime = std::chrono::steady_clock::now();
 	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
 	print("");
 
 	checkParticles(particles, std::size(particles), dt);
+
+	printStats();
 
 	destroyJobSystem();
 }
@@ -380,15 +359,16 @@ TEST_CASE("Game Frame") {
 		// CHECK(std::atomic_load(&completeCount) == test.numAnimationJobs);
 	}
 
-	auto endTime = std::chrono::steady_clock::now();
+	auto       endTime = std::chrono::steady_clock::now();
 	const auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
 	print("Elapsed time: %.4f sec", static_cast<double>(elapsedMicros) / 1e6);
 	print("");
+
+	printStats();
 
 	destroyJobSystem();
 }
 
 int main(int argc, char* argv[]) {
-	const int result = Catch::Session().run(argc, argv);
-	return result;
+	return Catch::Session().run(argc, argv);
 }

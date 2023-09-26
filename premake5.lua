@@ -99,7 +99,7 @@ if _OPTIONS["with-tests"] then
 project("UnitTest")
 	kind "ConsoleApp"
 	links("JobSystem")
-	files "tests/**.cpp"
+	files { "tests/**.cpp", "examples/common*", } 
 	externalincludedirs { "./", "external", "include",}
 
 end
@@ -108,31 +108,31 @@ if _OPTIONS["with-examples"] then
 
 project("Example1")
 	kind "ConsoleApp"
-	files "examples/example1.cpp"
+	files { "examples/example1.cpp", "examples/common*", }
 	externalincludedirs { "./", "include", }
 	links("JobSystem")
 
 project("Example2")
 	kind "ConsoleApp"
-	files "examples/example2.cpp"
+	files { "examples/example2.cpp", "examples/common*", }
 	externalincludedirs { "./", "include", }
 	links("JobSystem")
 
 project("Example3")
 	kind "ConsoleApp"
-	files "examples/example3.cpp"
+	files { "examples/example3.cpp", "examples/common*", }
 	externalincludedirs { "./", "include", }
 	links("JobSystem")
 
 project("Example4")
 	kind "ConsoleApp"
-	files "examples/example4.cpp"
+	files { "examples/example4.cpp", "examples/common*", }
 	externalincludedirs { "./", "include", }
 	links("JobSystem")
 
 project("Example5")
 	kind "ConsoleApp"
-	files "examples/example5.cpp"
+	files { "examples/example5.cpp", "examples/common*", }
 	externalincludedirs { "./", "include", }
 	links("JobSystem")
 

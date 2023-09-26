@@ -4,6 +4,8 @@
 
 namespace Typhoon {
 
+namespace Jobs {
+
 namespace detail {
 
 JobId createJobImpl(JobFunction function, const void* data = nullptr, size_t dataSize = 0);
@@ -81,5 +83,7 @@ std::tuple<ArgType...> unpackJobArgs(const void* args) {
 	std::memcpy(&tuple, args, sizeof tuple);
 	return tuple;
 }
+
+} // namespace Jobs
 
 } // namespace Typhoon
