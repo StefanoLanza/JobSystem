@@ -5,6 +5,7 @@
 #include <cassert>
 #include <condition_variable>
 #include <mutex>
+#include <random>
 #include <thread>
 #include <vector>
 
@@ -64,19 +65,21 @@ thread_local size_t tl_threadIndex = 0;
 } // namespace
 
 struct JobSystem {
-	JobSystemAllocator       allocator;
-	std::vector<std::thread> workerThreads;
-	void*                    jobPoolMemory;
-	Job*                     jobPool;
-	JobId*                   jobIdPool;
-	size_t                   threadCount; // main + worker threads
-	size_t                   jobsPerThread;
-	size_t                   jobCapacity;
-	JobQueue                 queues[maxThreads];
-	std::mutex               cv_m;
-	std::condition_variable  semaphore;
-	std::atomic_int32_t      activeJobCount { 0 };
-	bool                     isRunning;
+	JobSystemAllocator                 allocator;
+	std::vector<std::thread>           workerThreads;
+	void*                              jobPoolMemory;
+	Job*                               jobPool;
+	JobId*                             jobIdPool;
+	size_t                             threadCount; // main + worker threads
+	size_t                             jobsPerThread;
+	size_t                             jobCapacity;
+	JobQueue                           queues[maxThreads];
+	std::mutex                         cv_m;
+	std::condition_variable            semaphore;
+	std::atomic_int32_t                activeJobCount { 0 };
+	std::mt19937                       randomEngine { std::random_device {}() };
+	std::uniform_int_distribution<int> dist;
+	bool                               isRunning;
 };
 
 JobQueue& getQueue(JobId jobId, JobSystem& js) {
@@ -183,13 +186,14 @@ JobId getNextJob(JobQueue& queue, JobSystem& js) {
 #if TY_JS_STEALING
 		// This worker's queue is empty. Steal from other queues
 		// TODO How to steal from the queue with most jobs (usually the main one)
-		const size_t offset = 1 + (rand() % (js.threadCount - 1));
+		const size_t offset = js.dist(js.randomEngine);
 		const size_t otherQueueIndex = queue.index == 0 ? (queue.index + offset) % js.threadCount : 0;
 		assert(otherQueueIndex != queue.index);
 		++queue.stats.numAttemptedStealings;
 		job = stealJob(js.queues[otherQueueIndex]);
 		if (job) {
 			++queue.stats.numStolenJobs;
+			++js.queues[otherQueueIndex].stats.numGivenJobs;
 			return job;
 		}
 #endif // TY_JS_STEALING
@@ -300,6 +304,12 @@ void initJobSystem(size_t numJobsPerThread, size_t numWorkerThreads, const JobSy
 
 	// Init worker threads and queues
 	js->workerThreads.reserve(threadCount - 1);
+
+	if (threadCount > 1) {
+		// Init uniform random distribution
+		using param_t = std::uniform_int_distribution<>::param_type;
+		js->dist.param(param_t { 1, (int)threadCount - 1 });
+	}
 
 	for (size_t i = 0; i < threadCount; ++i) {
 		JobQueue& q = js->queues[i];

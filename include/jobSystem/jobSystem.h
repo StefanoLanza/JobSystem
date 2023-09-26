@@ -208,6 +208,7 @@ struct ThreadStats {
 #if TY_JS_STEALING
 	size_t numStolenJobs;
 	size_t numAttemptedStealings;
+	size_t numGivenJobs;
 #endif
 #if TY_JS_PROFILE
 	std::chrono::microseconds totalTime;

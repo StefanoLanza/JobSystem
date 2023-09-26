@@ -51,6 +51,7 @@ void printStats() {
 #if TY_JS_STEALING
 		print("  Stolen jobs: %zd", stats.numStolenJobs);
 		print("  Attempted stealings: %zd", stats.numAttemptedStealings);
+		print("  Given jobs: %zd", stats.numGivenJobs);
 		print("  Stealing efficiency : %.2f %%",
 		      100.f * static_cast<float>(stats.numStolenJobs) / static_cast<float>(std::max<size_t>(1, stats.numAttemptedStealings)));
 #endif
