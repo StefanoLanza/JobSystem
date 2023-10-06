@@ -65,9 +65,7 @@ void processData(const Image& image, size_t offset, size_t count) {
 void processImage(size_t offset, size_t count, const void* args, [[maybe_unused]] size_t threadIndex) {
 	Image* const image = unpackJobArg<Image*>(args);
 	assert(image->bpp == 32);
-#if _DEBUG
 	tsPrint("[thread %zd] Process image. offset: %zd count: %zd;", threadIndex, offset, count);
-#endif
 	processData(*image, offset, count);
 }
 
@@ -93,7 +91,7 @@ void run_mt(Image& image) {
 	const auto startTime = std::chrono::steady_clock::now();
     
 	const JobId rootJob = createJob();
-	const JobId imageJob = parallelFor(rootJob, 8192*4, processImage, (size_t)image.width * (size_t)image.height, &image);
+	const JobId imageJob = parallelFor(rootJob, 8192, processImage, (size_t)image.width * (size_t)image.height, &image);
 	startJob(imageJob);
 	startAndWaitForJob(rootJob);
 

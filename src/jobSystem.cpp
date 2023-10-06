@@ -49,9 +49,7 @@ struct JobQueue {
 	size_t jobIndex;
 	int    top;
 	int    bottom;
-#if TY_JS_STEALING
 	std::mutex mutex; // in case other threads steal a job from this queue
-#endif
 	std::thread::id threadId;
 	size_t          index;
 	ThreadStats     stats;
@@ -103,9 +101,7 @@ void pushJob(JobQueue& queue, JobId jobId, JobSystem& js) {
 	assert(queue.threadId == std::this_thread::get_id());
 	++queue.stats.numEnqueuedJobs;
 	{
-#if TY_JS_STEALING
 		std::lock_guard lock { queue.mutex };
-#endif
 		assert(queue.top <= queue.bottom);
 		// TODO check capacity
 		queue.jobIds[queue.bottom & queue.jobPoolMask] = jobId;
@@ -118,9 +114,7 @@ void pushJob(JobQueue& queue, JobId jobId, JobSystem& js) {
 // Pops a job from the private end of the queue (LIFO)
 JobId popJob(JobQueue& queue, JobSystem& js) {
 	assert(queue.threadId == std::this_thread::get_id());
-#if TY_JS_STEALING
 	std::lock_guard lock { queue.mutex };
-#endif
 	if (queue.bottom <= queue.top) {
 		return nullJobId;
 	}
@@ -129,7 +123,6 @@ JobId popJob(JobQueue& queue, JobSystem& js) {
 	return queue.jobIds[queue.bottom & queue.jobPoolMask];
 }
 
-#if TY_JS_STEALING
 JobId stealJob(JobQueue& queue) {
 	std::lock_guard lock { queue.mutex };
 	if (queue.bottom <= queue.top) {
@@ -139,7 +132,6 @@ JobId stealJob(JobQueue& queue) {
 	++queue.top;
 	return job;
 }
-#endif
 
 void finishJob(JobSystem& js, JobId jobId, JobQueue& queue) {
 	Job&          job = getJob(js.jobPool, jobId);
@@ -183,20 +175,26 @@ void executeJob(JobId jobId, JobSystem& js, JobQueue& queue) {
 JobId getNextJob(JobQueue& queue, JobSystem& js) {
 	JobId job = popJob(queue, js);
 	if (! job) {
-#if TY_JS_STEALING
 		// This worker's queue is empty. Steal from other queues
 		// TODO How to steal from the queue with most jobs (usually the main one)
+#if 0
 		const size_t offset = js.dist(js.randomEngine);
-		const size_t otherQueueIndex = queue.index == 0 ? (queue.index + offset) % js.threadCount : 0;
-		assert(otherQueueIndex != queue.index);
-		++queue.stats.numAttemptedStealings;
-		job = stealJob(js.queues[otherQueueIndex]);
-		if (job) {
-			++queue.stats.numStolenJobs;
-			++js.queues[otherQueueIndex].stats.numGivenJobs;
-			return job;
+		const size_t otherQueueIndex = (queue.index + offset) % js.threadCount;
+#else
+		for (int i = 1; i < js.threadCount; ++i) {
+			const size_t otherQueueIndex = (queue.index + i) % js.threadCount;
+#endif
+			assert(otherQueueIndex != queue.index);
+			++queue.stats.numAttemptedStealings;
+			job = stealJob(js.queues[otherQueueIndex]);
+			if (job) {
+				++queue.stats.numStolenJobs;
+				++js.queues[otherQueueIndex].stats.numGivenJobs;
+				return job;
+			}
+#if 1
 		}
-#endif // TY_JS_STEALING
+#endif
 	}
 	return job;
 }

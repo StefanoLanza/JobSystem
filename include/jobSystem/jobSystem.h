@@ -205,11 +205,9 @@ std::tuple<ArgType...> unpackJobArgs(const void* args);
 struct ThreadStats {
 	size_t numEnqueuedJobs;
 	size_t numExecutedJobs;
-#if TY_JS_STEALING
 	size_t numStolenJobs;
 	size_t numAttemptedStealings;
 	size_t numGivenJobs;
-#endif
 #if TY_JS_PROFILE
 	std::chrono::microseconds totalTime;
 	std::chrono::microseconds runningTime;
