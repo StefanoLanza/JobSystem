@@ -67,4 +67,6 @@ jobs:
       run: msbuild /m /p:Configuration=${{ matrix.configuration }} ${{env.SOLUTION_FILE_PATH}}
 
     - name: Run unit test
-      run: ${{env.UNIT_TEST_PATH}}
+      if: ${{ matrix.configuration == 'Release' }}
+      run: |
+        ${{env.UNIT_TEST_PATH}}
