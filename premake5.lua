@@ -80,12 +80,13 @@ filter { filter_debug }
 
 filter { filter_release }
 	defines { "NDEBUG", }
-	flags   { "NoManifest", "LinkTimeOptimization", "NoBufferSecurityCheck", "NoRuntimeChecks", }
+	flags   { "NoManifest", "NoBufferSecurityCheck", "NoRuntimeChecks", }
 	optimize("Full")
 	inlining "Auto"
 	warnings "Extra"
 	symbols "Off"
 	runtime "Release"
+	linktimeoptimization "on"
 
 project("JobSystem")
 	kind "StaticLib"
