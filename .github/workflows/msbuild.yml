@@ -14,7 +14,7 @@ on:
 env:
   # Path to the solution file relative to the root of the project.
   SOLUTION_FILE_PATH: build/vs2022/Typhoon-JobSystem.sln
-  UNIT_TEST_PATH: build/vs2022/bin/x86_64/Release/UnitTest.exe
+  UNIT_TEST_PATH: build/vs2022/bin/x86/Release/UnitTest.exe
 
 permissions:
   contents: read
