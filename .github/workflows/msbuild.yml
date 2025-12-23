@@ -44,7 +44,7 @@ jobs:
         Invoke-WebRequest `
           https://github.com/premake/premake-core/releases/download/v5.0.0-beta7/premake-5.0.0-beta7-windows.zip `
           -OutFile premake.zip
-        Expand-Archive premake.zip -DestinationPath premake
+        Expand-Archive premake.zip -Force -DestinationPath premake
         echo "$PWD\premake" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Generate Visual Studio solution
