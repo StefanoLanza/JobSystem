@@ -1,0 +1,72 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: MSBuild
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  
+env:
+  # Path to the solution file relative to the root of the project.
+  SOLUTION_FILE_PATH: build/vs2022/Typhoon-JobSystem.sln
+  UNIT_TEST_PATH: build/vs2022/bin/x86/Release/UnitTest.exe
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Cache Premake5
+      uses: actions/cache@v4
+      with:
+        path: premake
+        key: premake-5.0.0-beta7-windows
+    
+    - name: Download Premake5 if not cached
+      if: steps.cache-premake.outputs.cache-hit != 'true'
+      shell: powershell
+      run: |
+        Invoke-WebRequest `
+          https://github.com/premake/premake-core/releases/download/v5.0.0-beta7/premake-5.0.0-beta7-windows.zip `
+          -OutFile premake.zip
+        Expand-Archive premake.zip -Force -DestinationPath premake
+        echo "$PWD\premake" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Generate Visual Studio solution
+      run: premake5 vs2022 --with-tests --with-examples        
+    
+    - name: Add MSBuild to PATH    
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Cache build outputs
+      uses: actions/cache@v4
+      with:
+        path: |
+          build
+        key: windows-msvc-${{ matrix.configuration }}-${{ hashFiles('**/*.cpp', '**/*.c', '**/*.h') }}
+    
+    - name: Build solution
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      # Add additional options to the MSBuild command line here (like platform or verbosity level).
+      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
+      run: msbuild /m /p:Configuration=${{ matrix.configuration }} ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Run unit test
+      if: ${{ matrix.configuration == 'Release' }}
+      run: |
+        ${{env.UNIT_TEST_PATH}}
