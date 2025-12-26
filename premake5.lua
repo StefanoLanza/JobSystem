@@ -15,15 +15,15 @@ local workspacePath = path.join("build/", _ACTION)  -- e.g. build/vs2022
 -- Filters
 local filter_msvc = "toolset:msc*"
 local filter_xcode = "action:xcode*"
-local filter_x86 = "platforms:x32"
-local filter_x64 = "platforms:x65"
+local filter_x86 = "platforms:x86"
+local filter_x64 = "platforms:x64"
 local filter_debug =  "configurations:Debug*"
 local filter_release =  "configurations:Release*"
 local filter_windows = "system:windows"
 
 workspace ("JobSystem")
 	configurations { "Debug", "Release" }
-	platforms { "x32", "x64" }
+	platforms { "x86", "x64" }
 	language "C++"
 	location (workspacePath)
 	characterset "MBCS"
@@ -54,13 +54,13 @@ filter { "toolset:gcc" }
 filter {  "toolset:clang" }
     linkoptions { "-pthread" }
 
-filter { filter_x32 }
+filter { filter_x86 }
 	architecture "x86"
 	  
 filter { filter_x64 }
 	architecture "x86_64"
 
-filter { filter_windows, filter_x32, }
+filter { filter_windows, filter_x86, }
 	defines { "WIN32", "_WIN32", }
 
 filter { filter_windows, filter_x64, }
