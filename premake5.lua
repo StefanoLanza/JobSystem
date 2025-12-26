@@ -38,7 +38,6 @@ workspace ("JobSystem")
 	cppdialect "c++17"
 	rtti "Off"
 	targetdir (workspacePath .. "/bin/" .. get_clean_arch() .. "/%{cfg.buildcfg}")
-	objdir (workspacePath .. "/obj/" .. get_clean_arch() .. "/%{cfg.buildcfg}")
 
 filter { filter_msvc }
 	buildoptions { 
