@@ -41,11 +41,13 @@ workspace ("JobSystem")
 	objdir (workspacePath .. "/obj/" .. get_clean_arch() .. "/%{cfg.buildcfg}")
 
 filter { filter_msvc }
-	buildoptions { "/permissive-", }
+	buildoptions { 
+		"/permissive-", 
+		"/Zc:__cplusplus",    -- __cplusplus will now report 202002L (for C++20)
+	}
 	system "Windows"
 	defines { 
-		"_ENABLE_EXTENDED_ALIGNED_STORAGE", 
-		"/Zc:__cplusplus",   -- __cplusplus will now report 202002L (for C++20)
+		"_ENABLE_EXTENDED_ALIGNED_STORAGE", 		
 		"_HAS_EXCEPTIONS=0",
 	}
 
@@ -107,11 +109,16 @@ project("JobSystem")
 
 if _OPTIONS["with-tests"] then
 
+project("Catch")
+	kind "StaticLib"
+	files { "external/Catch/*.cpp", "external/Catch/*.hpp", } 
+	externalincludedirs { "external/Catch", }
+
 project("UnitTest")
 	kind "ConsoleApp"
-	links("JobSystem")
+	links({"JobSystem", "Catch",})
 	files { "tests/**.cpp", "examples/common*", } 
-	externalincludedirs { "./", "external", "include",}
+	externalincludedirs { "./", "external/Catch", "include",}
 
 end
 
