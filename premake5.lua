@@ -21,6 +21,11 @@ local filter_debug =  "configurations:Debug*"
 local filter_release =  "configurations:Release*"
 local filter_windows = "system:windows"
 
+-- Create a function to resolve the name
+function get_clean_arch()
+    return "%{cfg.architecture == 'x86_64' and 'x64' or cfg.architecture}"
+end
+
 workspace ("JobSystem")
 	configurations { "Debug", "Release" }
 	platforms { "x86", "x64" }
@@ -32,6 +37,8 @@ workspace ("JobSystem")
 	exceptionhandling "Off"
 	cppdialect "c++17"
 	rtti "Off"
+	targetdir (workspacePath .. "/bin/" .. get_clean_arch() .. "/%{cfg.buildcfg}")
+	objdir (workspacePath .. "/obj/" .. get_clean_arch() .. "/%{cfg.buildcfg}")
 
 filter { filter_msvc }
 	buildoptions { "/permissive-", }
