@@ -122,7 +122,7 @@ jobs:
 
     - name: Build gmake
       if: runner.os == 'Linux'
-      run: make -C build/gmake config=${{ matrix.configuration }}_${{ matrix.arch }} # e.g. release_x64
+      run: make -C build/gmake config=${{ matrix.lower_configuration }}_${{ matrix.arch }} # e.g. release_x64. Configuration must be lower case
 
     - name: Run unit test
       if: matrix.configuration == 'Release'
