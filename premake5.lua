@@ -13,31 +13,34 @@ newoption {
 local workspacePath = path.join("build/", _ACTION)  -- e.g. build/vs2022
 
 -- Filters
-local filter_vs = "action:vs*"
+local filter_msvc = "toolset:msc*"
 local filter_xcode = "action:xcode*"
-local filter_x86 = "platforms:x86"
-local filter_x64 = "platforms:x86_64"
+local filter_x86 = "platforms:x32"
+local filter_x64 = "platforms:x65"
 local filter_debug =  "configurations:Debug*"
 local filter_release =  "configurations:Release*"
+local filter_windows = "system:windows"
 
-workspace ("Typhoon-JobSystem")
+workspace ("JobSystem")
 	configurations { "Debug", "Release" }
-	platforms { "x86", "x86_64" }
+	platforms { "x32", "x64" }
 	language "C++"
 	location (workspacePath)
 	characterset "MBCS"
 	flags   { "MultiProcessorCompile", }
 	startproject "UnitTest"
 	exceptionhandling "Off"
-	defines { "_HAS_EXCEPTIONS=0" }
 	cppdialect "c++17"
 	rtti "Off"
 
-filter { filter_vs }
+filter { filter_msvc }
 	buildoptions { "/permissive-", }
 	system "Windows"
-	defines { "_ENABLE_EXTENDED_ALIGNED_STORAGE", }
-	-- systemversion "10.0.17134.0"
+	defines { 
+		"_ENABLE_EXTENDED_ALIGNED_STORAGE", 
+		"/Zc:__cplusplus",   -- __cplusplus will now report 202002L (for C++20)
+		"_HAS_EXCEPTIONS=0",
+	}
 
 filter { filter_xcode }
 	system "macosx"
@@ -51,22 +54,22 @@ filter { "toolset:gcc" }
 filter {  "toolset:clang" }
     linkoptions { "-pthread" }
 
-filter { filter_x86 }
+filter { filter_x32 }
 	architecture "x86"
 	  
 filter { filter_x64 }
 	architecture "x86_64"
 
-filter { filter_vs, filter_x86, }
+filter { filter_windows, filter_x32, }
 	defines { "WIN32", "_WIN32", }
 
-filter { filter_vs, filter_x64, }
+filter { filter_windows, filter_x64, }
 	defines { "WIN64", "_WIN64", }
 
-filter { filter_vs, filter_debug, }
+filter { filter_msvc, filter_debug, }
 	defines { "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1",  }
 
-filter { filter_vs, filter_release, }
+filter { filter_msvc, filter_release, }
 	defines { "_ITERATOR_DEBUG_LEVEL=0", "_SECURE_SCL=0", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1",  }
 
 filter { filter_debug }

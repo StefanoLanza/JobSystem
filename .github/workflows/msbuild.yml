@@ -12,20 +12,46 @@ on:
     branches: [ "main" ]
   
 env:
-  # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: build/vs2022/Typhoon-JobSystem.sln
-  UNIT_TEST_PATH: build/vs2022/bin/x86/Release/UnitTest.exe
+  # Path to the Visual Studio solution file relative to the root of the project.
+  VS_SLN_FILE_PATH: build/vs2022/LuaBind.sln
 
 permissions:
   contents: read
 
 jobs:
   build:
-    runs-on: windows-latest
-
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [windows-latest]
+        #os: [ubuntu-latest]
         configuration: [Debug, Release]
+        arch: [x64, x86]
+        compiler: [gcc, msvc] #TODO clang
+        # We need to exclude combinations that don't make sense
+        exclude:
+          - os: ubuntu-latest
+            compiler: msvc
+          - os: windows-latest
+            compiler: gcc
+          - os: windows-latest
+            compiler: clang
+        include:
+          - arch: x86
+            vs_platform: Win32
+          - arch: x64
+            vs_platform: x64
+          - configuration: Release
+            lower_configuration: release
+          - configuration: Debug
+            lower_configuration: debug
+    env:
+      # Path to the unit test executable relative to the root of the project
+      UNIT_TEST_PATH: ${{ contains(matrix.os, 'windows') 
+        && format('build/vs2022/bin/{0}/{1}/UnitTest.exe', matrix.arch, matrix.configuration) 
+        || format('build/gmake/bin/{0}/{1}/UnitTest', matrix.arch, matrix.lower_configuration) 
+       }}          
 
     steps:
     - name: Checkout repository
@@ -35,10 +61,10 @@ jobs:
       uses: actions/cache@v4
       with:
         path: premake
-        key: premake-5.0.0-beta7-windows
+        key: premake-5.0.0-beta7
     
-    - name: Download Premake5 if not cached
-      if: steps.cache-premake.outputs.cache-hit != 'true'
+    - name: Download Premake (Windows)
+      if: runner.os == 'Windows' && steps.cache-premake.outputs.cache-hit != 'true'
       shell: powershell
       run: |
         Invoke-WebRequest `
@@ -47,10 +73,38 @@ jobs:
         Expand-Archive premake.zip -Force -DestinationPath premake
         echo "$PWD\premake" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+    - name: Download Premake (Linux)
+      if: runner.os == 'Linux' && steps.cache-premake.outputs.cache-hit != 'true'
+      run: |
+        curl -L -o premake.tar.gz https://github.com/premake/premake-core/releases/download/v5.0.0-beta7/premake-5.0.0-beta7-linux.tar.gz
+        tar -xvf premake.tar.gz
+    
+    - name: Set up Dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        if [ "${{ matrix.compiler }}" = "clang" ]; then
+          sudo apt-get install -y clang
+        else
+          sudo apt-get install -y g++
+        fi
+
+    - name: Install 32-bit dependencies (Linux)
+      if: runner.os == 'Linux' && matrix.arch == 'x86'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-multilib g++-multilib
+
     - name: Generate Visual Studio solution
-      run: premake5 vs2022 --with-tests --with-examples        
+      if: runner.os == 'Windows'
+      run: premake5 vs2022 --with-tests --with-examples
+
+    - name: Generate makefiles
+      if: runner.os == 'Linux'
+      run: ./premake5 gmake -cc=gcc --with-tests --with-examples
     
     - name: Add MSBuild to PATH    
+      if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v1.0.2
 
     - name: Cache build outputs
@@ -58,15 +112,20 @@ jobs:
       with:
         path: |
           build
-        key: windows-msvc-${{ matrix.configuration }}-${{ hashFiles('**/*.cpp', '**/*.c', '**/*.h') }}
+        key: build-${{ matrix.configuration }}-${{ hashFiles('**/*.cpp', '**/*.c', '**/*.h') }}
     
     - name: Build solution
+      if: runner.os == 'Windows'
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild /m /p:Configuration=${{ matrix.configuration }} ${{env.SOLUTION_FILE_PATH}}
+      run: msbuild /m /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.vs_platform }} ${{env.VS_SLN_FILE_PATH}}
+
+    - name: Build gmake
+      if: runner.os == 'Linux'
+      run: make -C build/gmake config=${{ matrix.lower_configuration }}_${{ matrix.arch }} # e.g. release_x64
 
     - name: Run unit test
-      if: ${{ matrix.configuration == 'Release' }}
+      if: matrix.configuration == 'Release'
       run: |
         ${{env.UNIT_TEST_PATH}}

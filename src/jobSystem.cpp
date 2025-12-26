@@ -181,7 +181,7 @@ JobId getNextJob(JobQueue& queue, JobSystem& js) {
 		const size_t offset = js.dist(js.randomEngine);
 		const size_t otherQueueIndex = (queue.index + offset) % js.threadCount;
 #else
-		for (int i = 1; i < js.threadCount; ++i) {
+		for (size_t i = 1; i < js.threadCount; ++i) {
 			const size_t otherQueueIndex = (queue.index + i) % js.threadCount;
 #endif
 			assert(otherQueueIndex != queue.index);

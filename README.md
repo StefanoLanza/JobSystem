@@ -1,4 +1,4 @@
-**Typhoon JobSystem** is a C++ library for scheduling and executing jobs, either on a single thread or concurrently on multiple threads. It is intended for use in applications with tight performance and memory consumption constraints, like games.
+**JobSystem** is a C++ library for scheduling and executing jobs, either on a single thread or concurrently on multiple threads. It is intended for use in applications with tight performance and memory consumption constraints, like games.
 
 The implementation is based on the job system described in the [Molecular Matters blog](https://blog.molecular-matters.com/2015/08/24/job-system-2-0-lock-free-work-stealing-part-1-basics/).
 
