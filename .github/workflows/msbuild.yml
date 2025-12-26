@@ -24,8 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest]
-        #os: [ubuntu-latest]
+        os: [windows-latest, ubuntu-latest]
         configuration: [Debug, Release]
         arch: [x64, x86]
         compiler: [gcc, msvc] #TODO clang
