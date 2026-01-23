@@ -111,13 +111,13 @@ if _OPTIONS["with-tests"] then
 project("Catch")
 	kind "StaticLib"
 	files { "external/Catch/*.cpp", "external/Catch/*.hpp", } 
-	externalincludedirs { "external/Catch", }
+	includedirs { "external/Catch", }
 
 project("UnitTest")
 	kind "ConsoleApp"
 	links({"JobSystem", "Catch",})
 	files { "tests/**.cpp", "examples/common*", } 
-	externalincludedirs { "./", "external/Catch", "include",}
+	includedirs { "./",  "include",}
 
 end
 

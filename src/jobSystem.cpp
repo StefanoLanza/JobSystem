@@ -7,7 +7,6 @@
 #include <mutex>
 #include <random>
 #include <thread>
-#include <vector>
 
 namespace Typhoon {
 
@@ -42,14 +41,14 @@ struct alignas(jobAlignment) Job {
 constexpr size_t sizeJob = sizeof(Job);
 
 struct JobQueue {
-	JobId* jobIds;
-	size_t jobPoolOffset;
-	size_t jobPoolCapacity;
-	size_t jobPoolMask;
-	size_t jobIndex;
-	int    top;
-	int    bottom;
-	std::mutex mutex; // in case other threads steal a job from this queue
+	JobId*          jobIds;
+	size_t          jobPoolOffset;
+	size_t          jobPoolCapacity;
+	size_t          jobPoolMask;
+	size_t          jobIndex;
+	int             top;
+	int             bottom;
+	std::mutex      mutex; // in case other threads steal a job from this queue
 	std::thread::id threadId;
 	size_t          index;
 	ThreadStats     stats;
@@ -64,7 +63,8 @@ thread_local size_t tl_threadIndex = 0;
 
 struct JobSystem {
 	JobSystemAllocator                 allocator;
-	std::vector<std::thread>           workerThreads;
+	std::thread*                       workerThreads;
+	size_t                             numWorkerThreads;
 	void*                              jobPoolMemory;
 	Job*                               jobPool;
 	JobId*                             jobIdPool;
@@ -229,9 +229,13 @@ void stopThreads(JobSystem& js) {
 	}
 	js.semaphore.notify_all(); // notify working threads
 
-	for (auto& thread : js.workerThreads) {
-		thread.join();
+	for (size_t i = 0; i < js.numWorkerThreads; ++i) {
+		js.workerThreads[i].join();
+		js.workerThreads[i].~thread();
 	}
+	js.allocator.free(js.workerThreads);
+	js.workerThreads = nullptr;
+	js.numWorkerThreads = 0;
 }
 
 bool isJobFinished(JobSystem& js, JobId jobId) {
@@ -301,7 +305,8 @@ void initJobSystem(size_t numJobsPerThread, size_t numWorkerThreads, const JobSy
 	js->isRunning = true;
 
 	// Init worker threads and queues
-	js->workerThreads.reserve(threadCount - 1);
+	js->workerThreads = static_cast<std::thread*>(allocator.alloc(sizeof(std::thread) * (threadCount - 1)));
+	js->numWorkerThreads = threadCount - 1;
 
 	if (threadCount > 1) {
 		// Init uniform random distribution
@@ -326,7 +331,7 @@ void initJobSystem(size_t numJobsPerThread, size_t numWorkerThreads, const JobSy
 		}
 		else {
 			// Worker thread
-			js->workerThreads.emplace_back(worker, std::ref(q), i, std::ref(*js));
+			new (js->workerThreads + i - 1) std::thread(worker, std::ref(q), i, std::ref(*js));
 		}
 #if TY_JS_PROFILE
 		q.startTime = std::chrono::steady_clock::now();
@@ -350,7 +355,7 @@ void destroyJobSystem() {
 
 size_t getWorkerThreadCount() {
 	assert(jobSystem);
-	return jobSystem->workerThreads.size();
+	return jobSystem->numWorkerThreads;
 }
 
 JobId createJob() {
