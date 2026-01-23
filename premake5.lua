@@ -13,31 +13,42 @@ newoption {
 local workspacePath = path.join("build/", _ACTION)  -- e.g. build/vs2022
 
 -- Filters
-local filter_vs = "action:vs*"
+local filter_msvc = "toolset:msc*"
 local filter_xcode = "action:xcode*"
 local filter_x86 = "platforms:x86"
-local filter_x64 = "platforms:x86_64"
+local filter_x64 = "platforms:x64"
 local filter_debug =  "configurations:Debug*"
 local filter_release =  "configurations:Release*"
+local filter_windows = "system:windows"
 
-workspace ("Typhoon-JobSystem")
+-- Create a function to resolve the name
+function get_clean_arch()
+    return "%{cfg.architecture == 'x86_64' and 'x64' or cfg.architecture}"
+end
+
+workspace ("JobSystem")
 	configurations { "Debug", "Release" }
-	platforms { "x86", "x86_64" }
+	platforms { "x86", "x64" }
 	language "C++"
 	location (workspacePath)
 	characterset "MBCS"
 	flags   { "MultiProcessorCompile", }
 	startproject "UnitTest"
 	exceptionhandling "Off"
-	defines { "_HAS_EXCEPTIONS=0" }
 	cppdialect "c++17"
 	rtti "Off"
+	targetdir (workspacePath .. "/bin/" .. get_clean_arch() .. "/%{cfg.buildcfg}")
 
-filter { filter_vs }
-	buildoptions { "/permissive-", }
+filter { filter_msvc }
+	buildoptions { 
+		"/permissive-", 
+		"/Zc:__cplusplus",    -- __cplusplus will now report 202002L (for C++20)
+	}
 	system "Windows"
-	defines { "_ENABLE_EXTENDED_ALIGNED_STORAGE", }
-	-- systemversion "10.0.17134.0"
+	defines { 
+		"_ENABLE_EXTENDED_ALIGNED_STORAGE", 		
+		"_HAS_EXCEPTIONS=0",
+	}
 
 filter { filter_xcode }
 	system "macosx"
@@ -57,16 +68,16 @@ filter { filter_x86 }
 filter { filter_x64 }
 	architecture "x86_64"
 
-filter { filter_vs, filter_x86, }
+filter { filter_windows, filter_x86, }
 	defines { "WIN32", "_WIN32", }
 
-filter { filter_vs, filter_x64, }
+filter { filter_windows, filter_x64, }
 	defines { "WIN64", "_WIN64", }
 
-filter { filter_vs, filter_debug, }
+filter { filter_msvc, filter_debug, }
 	defines { "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1",  }
 
-filter { filter_vs, filter_release, }
+filter { filter_msvc, filter_release, }
 	defines { "_ITERATOR_DEBUG_LEVEL=0", "_SECURE_SCL=0", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1", "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1",  }
 
 filter { filter_debug }
@@ -80,12 +91,13 @@ filter { filter_debug }
 
 filter { filter_release }
 	defines { "NDEBUG", }
-	flags   { "NoManifest", "LinkTimeOptimization", "NoBufferSecurityCheck", "NoRuntimeChecks", }
+	flags   { "NoManifest", "NoBufferSecurityCheck", "NoRuntimeChecks", }
 	optimize("Full")
 	inlining "Auto"
 	warnings "Extra"
 	symbols "Off"
 	runtime "Release"
+	linktimeoptimization "on"
 
 project("JobSystem")
 	kind "StaticLib"
@@ -96,11 +108,16 @@ project("JobSystem")
 
 if _OPTIONS["with-tests"] then
 
+project("Catch")
+	kind "StaticLib"
+	files { "external/Catch/*.cpp", "external/Catch/*.hpp", } 
+	includedirs { "external/Catch", }
+
 project("UnitTest")
 	kind "ConsoleApp"
-	links("JobSystem")
+	links({"JobSystem", "Catch",})
 	files { "tests/**.cpp", "examples/common*", } 
-	externalincludedirs { "./", "external", "include",}
+	includedirs { "./",  "include",}
 
 end
 

@@ -7,7 +7,6 @@
 #include <mutex>
 #include <random>
 #include <thread>
-#include <vector>
 
 namespace Typhoon {
 
@@ -42,16 +41,14 @@ struct alignas(jobAlignment) Job {
 constexpr size_t sizeJob = sizeof(Job);
 
 struct JobQueue {
-	JobId* jobIds;
-	size_t jobPoolOffset;
-	size_t jobPoolCapacity;
-	size_t jobPoolMask;
-	size_t jobIndex;
-	int    top;
-	int    bottom;
-#if TY_JS_STEALING
-	std::mutex mutex; // in case other threads steal a job from this queue
-#endif
+	JobId*          jobIds;
+	size_t          jobPoolOffset;
+	size_t          jobPoolCapacity;
+	size_t          jobPoolMask;
+	size_t          jobIndex;
+	int             top;
+	int             bottom;
+	std::mutex      mutex; // in case other threads steal a job from this queue
 	std::thread::id threadId;
 	size_t          index;
 	ThreadStats     stats;
@@ -66,7 +63,8 @@ thread_local size_t tl_threadIndex = 0;
 
 struct JobSystem {
 	JobSystemAllocator                 allocator;
-	std::vector<std::thread>           workerThreads;
+	std::thread*                       workerThreads;
+	size_t                             numWorkerThreads;
 	void*                              jobPoolMemory;
 	Job*                               jobPool;
 	JobId*                             jobIdPool;
@@ -103,9 +101,7 @@ void pushJob(JobQueue& queue, JobId jobId, JobSystem& js) {
 	assert(queue.threadId == std::this_thread::get_id());
 	++queue.stats.numEnqueuedJobs;
 	{
-#if TY_JS_STEALING
 		std::lock_guard lock { queue.mutex };
-#endif
 		assert(queue.top <= queue.bottom);
 		// TODO check capacity
 		queue.jobIds[queue.bottom & queue.jobPoolMask] = jobId;
@@ -118,9 +114,7 @@ void pushJob(JobQueue& queue, JobId jobId, JobSystem& js) {
 // Pops a job from the private end of the queue (LIFO)
 JobId popJob(JobQueue& queue, JobSystem& js) {
 	assert(queue.threadId == std::this_thread::get_id());
-#if TY_JS_STEALING
 	std::lock_guard lock { queue.mutex };
-#endif
 	if (queue.bottom <= queue.top) {
 		return nullJobId;
 	}
@@ -129,7 +123,6 @@ JobId popJob(JobQueue& queue, JobSystem& js) {
 	return queue.jobIds[queue.bottom & queue.jobPoolMask];
 }
 
-#if TY_JS_STEALING
 JobId stealJob(JobQueue& queue) {
 	std::lock_guard lock { queue.mutex };
 	if (queue.bottom <= queue.top) {
@@ -139,7 +132,6 @@ JobId stealJob(JobQueue& queue) {
 	++queue.top;
 	return job;
 }
-#endif
 
 void finishJob(JobSystem& js, JobId jobId, JobQueue& queue) {
 	Job&          job = getJob(js.jobPool, jobId);
@@ -183,20 +175,26 @@ void executeJob(JobId jobId, JobSystem& js, JobQueue& queue) {
 JobId getNextJob(JobQueue& queue, JobSystem& js) {
 	JobId job = popJob(queue, js);
 	if (! job) {
-#if TY_JS_STEALING
 		// This worker's queue is empty. Steal from other queues
 		// TODO How to steal from the queue with most jobs (usually the main one)
+#if 0
 		const size_t offset = js.dist(js.randomEngine);
-		const size_t otherQueueIndex = queue.index == 0 ? (queue.index + offset) % js.threadCount : 0;
-		assert(otherQueueIndex != queue.index);
-		++queue.stats.numAttemptedStealings;
-		job = stealJob(js.queues[otherQueueIndex]);
-		if (job) {
-			++queue.stats.numStolenJobs;
-			++js.queues[otherQueueIndex].stats.numGivenJobs;
-			return job;
+		const size_t otherQueueIndex = (queue.index + offset) % js.threadCount;
+#else
+		for (size_t i = 1; i < js.threadCount; ++i) {
+			const size_t otherQueueIndex = (queue.index + i) % js.threadCount;
+#endif
+			assert(otherQueueIndex != queue.index);
+			++queue.stats.numAttemptedStealings;
+			job = stealJob(js.queues[otherQueueIndex]);
+			if (job) {
+				++queue.stats.numStolenJobs;
+				++js.queues[otherQueueIndex].stats.numGivenJobs;
+				return job;
+			}
+#if 1
 		}
-#endif // TY_JS_STEALING
+#endif
 	}
 	return job;
 }
@@ -231,9 +229,13 @@ void stopThreads(JobSystem& js) {
 	}
 	js.semaphore.notify_all(); // notify working threads
 
-	for (auto& thread : js.workerThreads) {
-		thread.join();
+	for (size_t i = 0; i < js.numWorkerThreads; ++i) {
+		js.workerThreads[i].join();
+		js.workerThreads[i].~thread();
 	}
+	js.allocator.free(js.workerThreads);
+	js.workerThreads = nullptr;
+	js.numWorkerThreads = 0;
 }
 
 bool isJobFinished(JobSystem& js, JobId jobId) {
@@ -303,7 +305,8 @@ void initJobSystem(size_t numJobsPerThread, size_t numWorkerThreads, const JobSy
 	js->isRunning = true;
 
 	// Init worker threads and queues
-	js->workerThreads.reserve(threadCount - 1);
+	js->workerThreads = static_cast<std::thread*>(allocator.alloc(sizeof(std::thread) * (threadCount - 1)));
+	js->numWorkerThreads = threadCount - 1;
 
 	if (threadCount > 1) {
 		// Init uniform random distribution
@@ -328,7 +331,7 @@ void initJobSystem(size_t numJobsPerThread, size_t numWorkerThreads, const JobSy
 		}
 		else {
 			// Worker thread
-			js->workerThreads.emplace_back(worker, std::ref(q), i, std::ref(*js));
+			new (js->workerThreads + i - 1) std::thread(worker, std::ref(q), i, std::ref(*js));
 		}
 #if TY_JS_PROFILE
 		q.startTime = std::chrono::steady_clock::now();
@@ -352,7 +355,7 @@ void destroyJobSystem() {
 
 size_t getWorkerThreadCount() {
 	assert(jobSystem);
-	return jobSystem->workerThreads.size();
+	return jobSystem->numWorkerThreads;
 }
 
 JobId createJob() {

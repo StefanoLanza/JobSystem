@@ -4,8 +4,7 @@
 #include <jobSystem/jobSystem.h>
 #include <thread>
 
-#define CATCH_CONFIG_RUNNER
-#include <Catch-master/single_include/catch2/catch.hpp>
+#include <catch_amalgamated.hpp>
 
 using namespace Typhoon::Jobs;
 
@@ -367,8 +366,4 @@ TEST_CASE("Game Frame") {
 	printStats();
 
 	destroyJobSystem();
-}
-
-int main(int argc, char* argv[]) {
-	return Catch::Session().run(argc, argv);
 }

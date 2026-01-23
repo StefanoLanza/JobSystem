@@ -27,11 +27,6 @@ constexpr int sleep_us = 1;
 #define TY_JS_JOB_ALIGNMENT 256
 #endif
 
-// Set to 0 to disable job stealing
-#ifndef TY_JS_STEALING
-#define TY_JS_STEALING 1
-#endif
-
 // Set to 0 to disable profiling of worker threads
 #ifndef TY_JS_PROFILE
 #define TY_JS_PROFILE 1
